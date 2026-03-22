@@ -18,7 +18,7 @@
     </div>
 
     <div class="form-group">
-        <label>1. Masukkan Kunci Rahasia (Maks 8 karakter):</label>
+        <label>1. Masukkan Kunci (Maks 8 karakter):</label>
         <input type="text" id="secretKey" placeholder="Contoh: KUNCI123" maxlength="8" autocomplete="off">
     </div>
 
@@ -57,8 +57,8 @@
     <div id="outputArea">Hasil akan muncul di sini...</div>
     <img id="outputImage" style="max-width: 100%; margin-top: 10px; border-radius: 6px; display: none; border: 1px solid var(--primary);">
     
-    <!-- Notifikasi inline untuk copy success -->
-    <div id="copyNotification" style="display: none; margin-top: 10px; padding: 12px; background-color: #10b981; color: white; border-radius: 6px; text-align: center; font-size: 14px; font-weight: bold; animation: fadeInOut 2.5s ease-in-out;">
+    <!-- Notifikasi inline untuk copy success (K4: uses CSS custom property) -->
+    <div id="copyNotification" style="display: none; margin-top: 10px; padding: 12px; background-color: #10b981; color: white; border-radius: 6px; text-align: center; font-size: 14px; font-weight: bold;" aria-live="polite" aria-atomic="true">
         ✅ Output berhasil dicopy ke clipboard!
     </div>
     

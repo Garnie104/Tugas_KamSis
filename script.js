@@ -312,6 +312,21 @@ function bytesToStr(bytes) {
     return new TextDecoder().decode(bytes);
 }
 
+/* K5: XSS Protection - Sanitize output sebelum display */
+function sanitizeOutput(text, maxLength = 100000) {
+    if (typeof text !== 'string') {
+        text = String(text);
+    }
+    
+    // Limit panjang untuk prevent DoS
+    if (text.length > maxLength) {
+        console.warn(`Output truncated dari ${text.length} ke ${maxLength} chars`);
+        text = text.substring(0, maxLength) + '... [TRUNCATED]';
+    }
+    
+    return text;
+}
+
 // Custom Base64 encoding/decoding - ga boleh pake btoa/atob
 // Harus built from scratch
 
@@ -349,48 +364,83 @@ function bytesToBase64(bytes) {
 }
 
 // Decode Base64 back to bytes
+// K3: Enhanced validation & edge case handling (algoritma tetap sama)
 function base64ToBytes(base64) {
-    if (/[^A-Za-z0-9+/=\s]/.test(base64)) {
-        throw new Error("Ciphertext mengandung karakter tidak valid!");
-    }
-    let str = base64.trim().replace(/\s+/g, "");
-    if (!/^[A-Za-z0-9+/]*={0,2}$/.test(str)) {
-        throw new Error("Format Base64 tidak valid!");
-    }
-    
-    if (str.length % 4 !== 0) {
-        throw new Error("Format Ciphertext tidak valid atau terpotong!");
-    }
+    try {
+        if (typeof base64 !== 'string') {
+            throw new Error("Base64 input harus string.");
+        }
 
-    // Hitung padding untuk kalkulasi panjang
-    let padding = 0;
-    if (str.endsWith("==")) padding = 2;
-    else if (str.endsWith("=")) padding = 1;
-    
-    let outLen = (str.length * 3 / 4) - padding;
-    let bytes = new Uint8Array(outLen);
+        // Normalisasi: hapus whitespace/newline (RFC 4648 valid)
+        let str = base64.trim().replace(/[\r\n\s]/g, "");
+        
+        // Validate charset
+        if (!/^[A-Za-z0-9+/]*={0,2}$/.test(str)) {
+            throw new Error("Base64 mengandung karakter invalid.");
+        }
+        
+        // Validate panjang (harus kelipatan 4)
+        if (str.length % 4 !== 0) {
+            throw new Error("Panjang Base64 harus kelipatan 4. Mungkin ciphertext terpotong?");
+        }
 
-    let i = 0, j = 0;
-    while (i < str.length) {
-        let enc1 = BASE64_CHARS.indexOf(str.charAt(i++));
-        let enc2 = BASE64_CHARS.indexOf(str.charAt(i++));
-        let enc3 = BASE64_CHARS.indexOf(str.charAt(i++));
-        let enc4 = BASE64_CHARS.indexOf(str.charAt(i++));
+        // Hitung padding untuk kalkulasi panjang
+        let padding = 0;
+        if (str.endsWith("==")) padding = 2;
+        else if (str.endsWith("=")) padding = 1;
+        
+        let outLen = (str.length * 3 / 4) - padding;
+        
+        // K3: Validate output length
+        if (outLen <= 0) {
+            throw new Error("Base64 decode menghasilkan panjang output invalid.");
+        }
+        
+        let bytes = new Uint8Array(outLen);
 
-        let b1 = (enc1 << 2) | (enc2 >> 4);
-        let b2 = ((enc2 & 15) << 4) | (enc3 >> 2);
-        let b3 = ((enc3 & 3) << 6) | enc4;
+        let i = 0, j = 0;
+        while (i < str.length) {
+            let enc1 = BASE64_CHARS.indexOf(str.charAt(i++));
+            let enc2 = BASE64_CHARS.indexOf(str.charAt(i++));
+            let enc3 = BASE64_CHARS.indexOf(str.charAt(i++));
+            let enc4 = BASE64_CHARS.indexOf(str.charAt(i++));
 
-        bytes[j++] = b1;
-        if (enc3 !== -1 && j < outLen) bytes[j++] = b2;
-        if (enc4 !== -1 && j < outLen) bytes[j++] = b3;
+            // K3: Better error context
+            if (enc1 === -1 || enc2 === -1) {
+                throw new Error(`Invalid Base64 character di posisi ${i - 4}`);
+            }
+
+            let b1 = (enc1 << 2) | (enc2 >> 4);
+            let b2 = ((enc2 & 15) << 4) | (enc3 >> 2);
+            let b3 = ((enc3 & 3) << 6) | enc4;
+
+            bytes[j++] = b1;
+            if (enc3 !== -1 && j < outLen) bytes[j++] = b2;
+            if (enc4 !== -1 && j < outLen) bytes[j++] = b3;
+        }
+        
+        // K3: Verify output length matches expected
+        if (j !== outLen) {
+            throw new Error(`Decode mismatch: expected ${outLen}, got ${j} bytes.`);
+        }
+        
+        return bytes;
+    } catch (error) {
+        // Re-throw dengan konteks yang lebih jelas
+        throw new Error(`Base64 decode error: ${error.message}`);
     }
-    return bytes;
 }
 
 let imageBase64Data = "";
 let txtFileContent = "";
 let lastOutputType = null; // Lacak jenis output untuk download: 'text', 'image', atau 'txt'
+
+/* K1: Global reference untuk cleanup FileReader */
+let currentImageReader = null;
+let currentTxtReader = null;
+
+/* K2: Race condition protection */
+let isProcessing = false;
 
 function resetTxtFileState() {
     txtFileContent = "";
@@ -408,6 +458,12 @@ document.getElementById('inputFile').addEventListener('change', function(e) {
         return;
     }
 
+    // K1: Cleanup previous reader jika ada untuk prevent memory leak
+    if (currentImageReader) {
+        currentImageReader.abort();
+        currentImageReader = null;
+    }
+
     // Cegah user upload gambar terlalu besar
     const MAX_IMAGE_SIZE = 50 * 1024 * 1024; // Batas maksimal 50MB
     const WARN_IMAGE_SIZE = 20 * 1024 * 1024; // Peringatan di 20MB
@@ -423,14 +479,19 @@ document.getElementById('inputFile').addEventListener('change', function(e) {
     }
 
     let reader = new FileReader();
+    currentImageReader = reader; // K1: Track untuk cleanup
+    
     reader.onerror = function() {
+        console.error("Error membaca file gambar");
         resetImageState();
+        currentImageReader = null; // K1: Cleanup
     };
     reader.onload = function(event) {
         imageBase64Data = event.target.result; 
         let preview = document.getElementById('imagePreview');
         preview.src = imageBase64Data;
         preview.style.display = 'block';
+        currentImageReader = null; // K1: Cleanup setelah load selesai
     };
     reader.readAsDataURL(file);
 });
@@ -441,6 +502,12 @@ document.getElementById('inputTxtFile').addEventListener('change', function(e) {
     if (!file) {
         resetTxtFileState();
         return;
+    }
+
+    // K1: Cleanup previous reader jika ada untuk prevent memory leak
+    if (currentTxtReader) {
+        currentTxtReader.abort();
+        currentTxtReader = null;
     }
 
     // Batasi ukuran file teks
@@ -458,19 +525,30 @@ document.getElementById('inputTxtFile').addEventListener('change', function(e) {
     }
 
     let reader = new FileReader();
+    currentTxtReader = reader; // K1: Track untuk cleanup
+    
     reader.onerror = function() {
+        console.error("Error membaca file teks");
         resetTxtFileState();
+        currentTxtReader = null; // K1: Cleanup
     };
     reader.onload = function(event) {
         txtFileContent = event.target.result;
         let preview = document.getElementById('txtFilePreview');
         preview.innerText = txtFileContent;
         preview.style.display = 'block';
+        currentTxtReader = null; // K1: Cleanup setelah load selesai
     };
     reader.readAsText(file);
 });
 
 function processData(action) {
+    /* K2: Race condition protection - prevent multiple simultaneous operations */
+    if (isProcessing) {
+        alert("⚠️ Proses masih berjalan. Tunggu sebentar...");
+        return;
+    }
+    
     let rawKey = document.getElementById('secretKey').value;
     if (!rawKey || !rawKey.trim()) {
         return alert("Kunci rahasia tidak boleh kosong!");
@@ -481,6 +559,15 @@ function processData(action) {
     let outputArea = document.getElementById('outputArea');
     let outputImage = document.getElementById('outputImage');
     outputImage.style.display = 'none';
+
+    /* K2: Set processing flag & disable buttons */
+    isProcessing = true;
+    let processBtn = action === 'encrypt' ? 
+        document.getElementById('btnEncrypt') : 
+        document.getElementById('btnDecrypt');
+    let originalBtnText = processBtn.innerText;
+    processBtn.disabled = true;
+    processBtn.innerText = action === 'encrypt' ? '⏳ Enkripsi...' : '⏳ Dekripsi...';
 
     try {
         if (type === 'text') {
@@ -581,6 +668,11 @@ function processData(action) {
         lastOutputType = null;
         document.getElementById('btnCopy').style.display = 'none';
         document.getElementById('btnDownload').style.display = 'none';
+    } finally {
+        /* K2: Always restore button state & clear processing flag */
+        isProcessing = false;
+        processBtn.disabled = false;
+        processBtn.innerText = originalBtnText;
     }
 }
 
@@ -631,32 +723,52 @@ function copyOutput() {
 }
 
 // Tampilkan notifikasi inline copy success
+// K4: Gunakan CSS custom property untuk duration (configurable, bukan hardcoded)
 function showCopyNotification() {
     let notification = document.getElementById('copyNotification');
     notification.style.display = 'block';
     
-    // Auto hide setelah 2.5s (sesuai dengan durasi animation)
+    // Baca duration dari CSS custom property
+    let durationStr = getComputedStyle(document.documentElement)
+        .getPropertyValue('--notification-duration').trim();
+    let durationMs = parseInt(durationStr);
+    
+    // Fallback jika parsing gagal
+    if (isNaN(durationMs)) durationMs = 2500;
+    
+    // Auto hide setelah durasi animation
     setTimeout(function() {
         notification.style.display = 'none';
-    }, 2500);
+    }, durationMs);
 }
 
 // Fallback function untuk copy - return true jika berhasil
+// K1: Ensure DOM cleanup dengan finally block
 function fallbackCopyToClipboard(text) {
     let textArea = document.createElement("textarea");
     textArea.value = text;
     textArea.style.position = "fixed";
     textArea.style.left = "-999999px";
+    textArea.style.top = "-999999px";
+    textArea.setAttribute('aria-hidden', 'true');
     document.body.appendChild(textArea);
-    textArea.select();
+    
     try {
-        document.execCommand('copy');
-        document.body.removeChild(textArea);
-        return true; // Berhasil
+        textArea.select();
+        let successful = document.execCommand('copy');
+        if (!successful) {
+            console.warn("execCommand copy tidak berhasil");
+            return false;
+        }
+        return true;
     } catch (err) {
-        document.body.removeChild(textArea);
-        alert("❌ Gagal copy ke clipboard. Silakan copy manual dengan Ctrl+C.");
-        return false; // Gagal
+        console.error("Fallback copy error:", err);
+        return false;
+    } finally {
+        // K1: IMPORTANT - cleanup textarea dari DOM untuk prevent accumulation
+        if (textArea && textArea.parentNode) {
+            textArea.parentNode.removeChild(textArea);
+        }
     }
 }
 

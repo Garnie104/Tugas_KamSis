@@ -6,6 +6,9 @@
     --text: #f9fafb;
     --input-bg: #262626;
     --input-border: #404040;
+    /* K4: Animation duration configurable */
+    --animation-duration: 2.5s;
+    --notification-duration: 2500ms;
 }
 
 body {
