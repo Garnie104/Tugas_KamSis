@@ -158,6 +158,7 @@ function switchMode(mode) {
     document.getElementById('outputArea').innerText = "Hasil akan muncul di sini...";
     document.getElementById('outputImage').style.display = 'none';
     document.getElementById('inputText').value = ""; 
+    document.getElementById('btnCopy').style.display = 'none';
     document.getElementById('btnDownload').style.display = 'none';
     lastOutputType = null;
     resetImageState();
@@ -562,7 +563,8 @@ function processData(action) {
             }
         }
         
-        // Tampilkan tombol download setelah output berhasil dibuat
+        // Tampilkan tombol copy dan download setelah output berhasil dibuat
+        document.getElementById('btnCopy').style.display = 'block';
         document.getElementById('btnDownload').style.display = 'block';
         
    } catch (e) {
@@ -576,8 +578,65 @@ function processData(action) {
         // Error asli ada di console untuk debugging
         console.error("System Log (Developer Only):", e.message);
         lastOutputType = null;
+        document.getElementById('btnCopy').style.display = 'none';
         document.getElementById('btnDownload').style.display = 'none';
     }
+}
+
+function copyOutput() {
+    if (!lastOutputType) {
+        return alert("Tidak ada output untuk dicopy!");
+    }
+
+    let outputArea = document.getElementById('outputArea');
+    let textToCopy = "";
+    
+    if (lastOutputType === 'text' || lastOutputType === 'txt') {
+        // Copy teks dari output area (ciphertext atau plaintext)
+        textToCopy = outputArea.innerText;
+        
+        // Validasi text
+        if (!textToCopy || textToCopy.includes("Hasil akan muncul") || textToCopy.includes("ERROR")) {
+            return alert("Tidak ada output valid untuk dicopy!");
+        }
+    } else if (lastOutputType === 'image') {
+        // Copy base64 image dari image tag
+        let outputImage = document.getElementById('outputImage');
+        if (!outputImage.src || outputImage.style.display === 'none') {
+            return alert("Tidak ada gambar untuk dicopy!");
+        }
+        textToCopy = outputImage.src;
+    }
+    
+    // Copy ke clipboard menggunakan modern API
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(textToCopy).then(function() {
+            alert("✅ Output berhasil dicopy ke clipboard!\n\n💡 Tip: Gunakan Ctrl+V untuk paste di tempat lain.");
+        }).catch(function(err) {
+            // Fallback untuk browser lama
+            fallbackCopyToClipboard(textToCopy);
+        });
+    } else {
+        // Fallback untuk browser yang tidak support Clipboard API
+        fallbackCopyToClipboard(textToCopy);
+    }
+}
+
+// Fallback function untuk copy kecilkan text panjang agar bisa dicopy
+function fallbackCopyToClipboard(text) {
+    let textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.position = "fixed";
+    textArea.style.left = "-999999px";
+    document.body.appendChild(textArea);
+    textArea.select();
+    try {
+        document.execCommand('copy');
+        alert("✅ Output berhasil dicopy ke clipboard!\n\n💡 Tip: Gunakan Ctrl+V untuk paste di tempat lain.");
+    } catch (err) {
+        alert("❌ Gagal copy ke clipboard. Silakan copy manual dengan Ctrl+C.");
+    }
+    document.body.removeChild(textArea);
 }
 
 function downloadOutput() {
