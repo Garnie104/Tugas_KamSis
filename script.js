@@ -224,11 +224,11 @@ function toggleInput() {
             resetImageState();
             resetTxtFileState();
         } else if (type === 'txt') {
-            textGroup.style.display = 'block';
+            // File .txt mode dekripsi - hanya upload file, sembunyikan textarea
+            textGroup.style.display = 'none';
             fileGroup.style.display = 'none';
             txtFileGroup.style.display = 'block';
-            textLabel.innerText = "3. Atau Paste Ciphertext dari file di sini (jika file text besar):";
-            txtFileLabel.innerText = "3. Atau Unggah File Ciphertext (.txt):";
+            txtFileLabel.innerText = "3. Unggah File Ciphertext (.txt):";
             resetImageState();
         }
     }
@@ -540,12 +540,23 @@ function processData(action) {
             } else {
                 // MODE DEKRIPSI
                 let input = txtFileContent || document.getElementById('inputText').value;
-                if (!input) return alert("Unggah atau paste Ciphertext file teks untuk didekripsi!");
+                if (!input) return alert("Unggah file Ciphertext (.txt) untuk didekripsi!");
                 let encBytes = base64ToBytes(input);
                 let decrypted = decryptCBC(encBytes, keyBytes);
                 let decryptedText = bytesToStr(decrypted);
-                outputArea.innerText = decryptedText;
-                lastOutputType = 'txt';
+                
+                // Cek apakah hasil dekripsi adalah gambar (data:image/xxx)
+                if (decryptedText.startsWith("data:image/")) {
+                    // Hasil dekripsi adalah gambar - tampilkan sebagai gambar
+                    outputArea.innerText = "Gambar berhasil didekripsi! Lihat di bawah.";
+                    outputImage.src = decryptedText;
+                    outputImage.style.display = 'block';
+                    lastOutputType = 'image';
+                } else {
+                    // Hasil dekripsi adalah teks normal
+                    outputArea.innerText = decryptedText;
+                    lastOutputType = 'txt';
+                }
             }
         }
         
