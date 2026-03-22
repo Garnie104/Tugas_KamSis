@@ -164,6 +164,20 @@ function switchMode(mode) {
 
     document.getElementById('secretKey').value = "";
     
+    // Update pilihan format sesuai mode
+    let optionImage = document.getElementById('optionImage');
+    let inputType = document.getElementById('inputType');
+    
+    if (mode === 'encrypt') {
+        // Enkripsi: tampilkan semua 3 pilihan
+        optionImage.style.display = 'block';
+        inputType.value = 'text'; // Reset ke teks normal
+    } else {
+        // Dekripsi: sembunyikan opsi gambar karena ciphertext sudah dalam bentuk text Base64
+        optionImage.style.display = 'none';
+        inputType.value = 'text'; // Reset ke teks normal
+    }
+    
     // Perbarui form sesuai mode
     toggleInput();
 }
@@ -178,6 +192,7 @@ function toggleInput() {
     let txtFileLabel = document.getElementById('txtFileInputLabel');
 
     if (currentMode === 'encrypt') {
+        // MODE ENKRIPSI: 3 pilihan (text, image, txt)
         if (type === 'text') {
             textGroup.style.display = 'block';
             fileGroup.style.display = 'none';
@@ -186,7 +201,7 @@ function toggleInput() {
             resetImageState();
             resetTxtFileState();
         } else if (type === 'image') {
-            textGroup.style.display = 'none'; // Sembunyikan teks, hanya butuh upload gambar
+            textGroup.style.display = 'none';
             fileGroup.style.display = 'block';
             txtFileGroup.style.display = 'none';
             fileLabel.innerText = "3. Unggah File Gambar yang akan disandikan:";
@@ -199,7 +214,8 @@ function toggleInput() {
             txtFileLabel.innerText = "3. Unggah File Teks yang akan disandikan:";
             resetImageState();
         }
-    } else { // MODE DEKRIPSI
+    } else {
+        // MODE DEKRIPSI: 2 pilihan (text, txt) - opsi gambar sudah disembunyikan
         if (type === 'text') {
             textGroup.style.display = 'block';
             fileGroup.style.display = 'none';
@@ -207,20 +223,13 @@ function toggleInput() {
             textLabel.innerText = "3. Paste Ciphertext (Teks Sandi) di sini:";
             resetImageState();
             resetTxtFileState();
-        } else if (type === 'image') {
-            textGroup.style.display = 'block'; // Tampilkan teks untuk paste teks sandi
-            fileGroup.style.display = 'none';  // Sembunyikan upload, karena dekripsi dari teks
-            txtFileGroup.style.display = 'none';
-            textLabel.innerText = "3. Paste Ciphertext Gambar (Teks Super Panjang) di sini:";
-            resetImageState();
-            resetTxtFileState();
         } else if (type === 'txt') {
             textGroup.style.display = 'block';
             fileGroup.style.display = 'none';
-            txtFileGroup.style.display = 'none';
-            textLabel.innerText = "3. Paste Ciphertext Teks (Teks Sandi) di sini:";
+            txtFileGroup.style.display = 'block';
+            textLabel.innerText = "3. Atau Paste Ciphertext dari file di sini (jika file text besar):";
+            txtFileLabel.innerText = "3. Atau Unggah File Ciphertext (.txt):";
             resetImageState();
-            resetTxtFileState();
         }
     }
 }
