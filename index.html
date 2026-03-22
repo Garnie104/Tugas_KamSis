@@ -56,6 +56,12 @@
     <label style="margin-top: 20px; color: var(--primary);">Output (Hasil):</label>
     <div id="outputArea">Hasil akan muncul di sini...</div>
     <img id="outputImage" style="max-width: 100%; margin-top: 10px; border-radius: 6px; display: none; border: 1px solid var(--primary);">
+    
+    <!-- Notifikasi inline untuk copy success -->
+    <div id="copyNotification" style="display: none; margin-top: 10px; padding: 12px; background-color: #10b981; color: white; border-radius: 6px; text-align: center; font-size: 14px; font-weight: bold; animation: fadeInOut 2.5s ease-in-out;">
+        ✅ Output berhasil dicopy ke clipboard!
+    </div>
+    
     <div class="btn-group" style="margin-top: 15px;">
         <button id="btnCopy" class="btn-encrypt" onclick="copyOutput()" style="display: none; flex: 1;">📋 COPY OUTPUT</button>
         <button id="btnDownload" class="btn-encrypt" onclick="downloadOutput()" style="display: none; flex: 1;">📥 DOWNLOAD OUTPUT</button>

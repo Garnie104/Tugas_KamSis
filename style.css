@@ -176,3 +176,23 @@ button {
     font-weight: bold;
     box-shadow: 0 0 15px rgba(220, 38, 38, 0.4);
 }
+
+/* Animasi untuk notifikasi copy */
+@keyframes fadeInOut {
+    0% {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    10% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    90% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+}

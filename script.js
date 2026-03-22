@@ -157,6 +157,7 @@ function switchMode(mode) {
     // Hapus semua saat ganti tab
     document.getElementById('outputArea').innerText = "Hasil akan muncul di sini...";
     document.getElementById('outputImage').style.display = 'none';
+    document.getElementById('copyNotification').style.display = 'none';
     document.getElementById('inputText').value = ""; 
     document.getElementById('btnCopy').style.display = 'none';
     document.getElementById('btnDownload').style.display = 'none';
@@ -585,7 +586,8 @@ function processData(action) {
 
 function copyOutput() {
     if (!lastOutputType) {
-        return alert("Tidak ada output untuk dicopy!");
+        alert("Tidak ada output untuk dicopy!");
+        return;
     }
 
     let outputArea = document.getElementById('outputArea');
@@ -597,13 +599,15 @@ function copyOutput() {
         
         // Validasi text
         if (!textToCopy || textToCopy.includes("Hasil akan muncul") || textToCopy.includes("ERROR")) {
-            return alert("Tidak ada output valid untuk dicopy!");
+            alert("Tidak ada output valid untuk dicopy!");
+            return;
         }
     } else if (lastOutputType === 'image') {
         // Copy base64 image dari image tag
         let outputImage = document.getElementById('outputImage');
         if (!outputImage.src || outputImage.style.display === 'none') {
-            return alert("Tidak ada gambar untuk dicopy!");
+            alert("Tidak ada gambar untuk dicopy!");
+            return;
         }
         textToCopy = outputImage.src;
     }
@@ -611,18 +615,33 @@ function copyOutput() {
     // Copy ke clipboard menggunakan modern API
     if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(textToCopy).then(function() {
-            alert("✅ Output berhasil dicopy ke clipboard!\n\n💡 Tip: Gunakan Ctrl+V untuk paste di tempat lain.");
+            showCopyNotification();
         }).catch(function(err) {
             // Fallback untuk browser lama
-            fallbackCopyToClipboard(textToCopy);
+            if (fallbackCopyToClipboard(textToCopy)) {
+                showCopyNotification();
+            }
         });
     } else {
         // Fallback untuk browser yang tidak support Clipboard API
-        fallbackCopyToClipboard(textToCopy);
+        if (fallbackCopyToClipboard(textToCopy)) {
+            showCopyNotification();
+        }
     }
 }
 
-// Fallback function untuk copy kecilkan text panjang agar bisa dicopy
+// Tampilkan notifikasi inline copy success
+function showCopyNotification() {
+    let notification = document.getElementById('copyNotification');
+    notification.style.display = 'block';
+    
+    // Auto hide setelah 2.5s (sesuai dengan durasi animation)
+    setTimeout(function() {
+        notification.style.display = 'none';
+    }, 2500);
+}
+
+// Fallback function untuk copy - return true jika berhasil
 function fallbackCopyToClipboard(text) {
     let textArea = document.createElement("textarea");
     textArea.value = text;
@@ -632,11 +651,13 @@ function fallbackCopyToClipboard(text) {
     textArea.select();
     try {
         document.execCommand('copy');
-        alert("✅ Output berhasil dicopy ke clipboard!\n\n💡 Tip: Gunakan Ctrl+V untuk paste di tempat lain.");
+        document.body.removeChild(textArea);
+        return true; // Berhasil
     } catch (err) {
+        document.body.removeChild(textArea);
         alert("❌ Gagal copy ke clipboard. Silakan copy manual dengan Ctrl+C.");
+        return false; // Gagal
     }
-    document.body.removeChild(textArea);
 }
 
 function downloadOutput() {
