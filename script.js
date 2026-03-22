@@ -234,24 +234,33 @@ function toggleInput() {
     }
 }
 
-// Jangan biarkan user input text lebih dari 5MB
+// Batasi ukuran input text tergantung mode
 document.getElementById('inputText').addEventListener('input', function(e) {
-    const MAX_TEXT_SIZE = 5 * 1024 * 1024; // Batas maksimal 5MB
-    const WARN_TEXT_SIZE = 1 * 1024 * 1024; // Peringatan di 1MB
+    // Mode-specific limits: dekripsi butuh limit lebih besar untuk ciphertext dari gambar besar
+    const isDecryptMode = currentMode === 'decrypt';
+    const MAX_TEXT_SIZE = isDecryptMode ? 
+        150 * 1024 * 1024 :      // Dekripsi: 150MB (untuk ciphertext gambar/txt besar)
+        5 * 1024 * 1024;         // Enkripsi: 5MB (untuk teks biasa)
+    const WARN_TEXT_SIZE = isDecryptMode ? 
+        50 * 1024 * 1024 :       // Dekripsi: warning di 50MB
+        1 * 1024 * 1024;         // Enkripsi: warning di 1MB
     
     let textBytes = new TextEncoder().encode(this.value).length;
     
     if (textBytes > MAX_TEXT_SIZE) {
-    // Potong otomatis jika terlalu besar
+        // Potong otomatis jika terlalu besar
         let encoded = new TextEncoder().encode(this.value);
         let trimmed = new TextDecoder().decode(encoded.slice(0, MAX_TEXT_SIZE));
         this.value = trimmed;
-        alert("❌ Teks terlalu besar! Maksimal 5MB. Teks telah dipotong otomatis.");
+        let modeText = isDecryptMode ? "Dekripsi" : "Enkripsi";
+        let limitMB = (MAX_TEXT_SIZE / (1024 * 1024)).toFixed(0);
+        alert("❌ Teks " + modeText.toLowerCase() + " terlalu besar! Maksimal " + limitMB + "MB. Teks telah dipotong otomatis.");
         return;
     }
     
     if (textBytes > WARN_TEXT_SIZE) {
-        console.warn("⚠️ Peringatan: Teks cukup besar (" + (textBytes / (1024*1024)).toFixed(2) + "MB). Proses enkripsi mungkin memakan waktu lebih lama.");
+        let warnMB = (textBytes / (1024*1024)).toFixed(2);
+        console.warn("⚠️ Peringatan: Teks cukup besar (" + warnMB + "MB). Proses enkripsi/dekripsi mungkin memakan waktu lebih lama.");
     }
 });
 
