@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Kriptografi</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="container">
+    <h1>Aplikasi Kriptografi</h1>
+    <p class="subtitle"></p>
+
+    <div class="tabs">
+        <button id="tabEncrypt" class="tab-btn active" onclick="switchMode('encrypt')">🔒 MODE ENKRIPSI</button>
+        <button id="tabDecrypt" class="tab-btn" onclick="switchMode('decrypt')">🔓 MODE DEKRIPSI</button>
+    </div>
+
+    <div class="form-group">
+        <label>1. Masukkan Kunci Rahasia (Maks 8 karakter):</label>
+        <input type="text" id="secretKey" placeholder="Contoh: KUNCI123" maxlength="8" autocomplete="off">
+    </div>
+
+    <div class="form-group">
+        <label>2. Pilih Tipe Format:</label>
+        <select id="inputType" onchange="toggleInput()">
+            <option value="text">Teks Normal</option>
+            <option value="image">File Gambar (.png / .jpg)</option>
+            <option value="txt">File Teks (.txt)</option>
+        </select>
+    </div>
+
+    <div class="form-group" id="fileInputGroup" style="display: none;">
+        <label id="fileInputLabel">3. Unggah File Gambar:</label>
+        <input type="file" id="inputFile" accept="image/*" style="padding: 6px;">
+        <img id="imagePreview" alt="Preview">
+    </div>
+
+    <div class="form-group" id="txtFileInputGroup" style="display: none;">
+        <label id="txtFileInputLabel">3. Unggah File Teks (.txt):</label>
+        <input type="file" id="inputTxtFile" accept=".txt,text/plain" style="padding: 6px;">
+        <div id="txtFilePreview" style="margin-top: 10px; padding: 10px; background: var(--surface); border-radius: 4px; display: none; max-height: 200px; overflow-y: auto; color: var(--text); white-space: pre-wrap; word-break: break-all; font-size: 12px;"></div>
+    </div>
+
+    <div class="form-group" id="textInputGroup">
+        <label id="textInputLabel">3. Masukkan Pesan:</label>
+        <textarea id="inputText" placeholder="Ketik atau paste teks di sini..." autocomplete="off"></textarea>
+    </div>
+
+    <div class="btn-group">
+        <button id="btnEncrypt" class="btn-encrypt" onclick="processData('encrypt')">🔒 EKSEKUSI ENKRIPSI</button>
+        <button id="btnDecrypt" class="btn-decrypt" onclick="processData('decrypt')" style="display: none;">🔓 EKSEKUSI DEKRIPSI</button>
+    </div>
+
+    <label style="margin-top: 20px; color: var(--primary);">Output (Hasil):</label>
+    <div id="outputArea">Hasil akan muncul di sini...</div>
+    <img id="outputImage" style="max-width: 100%; margin-top: 10px; border-radius: 6px; display: none; border: 1px solid var(--primary);">
+    <button id="btnDownload" class="btn-encrypt" onclick="downloadOutput()" style="margin-top: 15px; display: none;">📥 DOWNLOAD OUTPUT</button>
+</div>
+
+<script src="script.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,178 @@
+/* TEMA MERAH HITAM (CYBERSECURITY) */
+:root {
+    --primary: #dc2626;
+    --bg: #0a0a0a;
+    --surface: #171717;
+    --text: #f9fafb;
+    --input-bg: #262626;
+    --input-border: #404040;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+}
+
+.container {
+    background: var(--surface);
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 25px rgba(220, 38, 38, 0.15);
+    width: 100%;
+    max-width: 600px;
+    border: 1px solid #333;
+}
+
+h1 {
+    font-size: 24px;
+    text-align: center;
+    color: var(--primary);
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+p.subtitle {
+    text-align: center;
+    font-size: 14px;
+    color: #9ca3af;
+    margin-bottom: 20px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 5px;
+    font-size: 14px;
+    color: #d1d5db;
+}
+
+input,
+textarea,
+select {
+    width: 100%;
+    padding: 10px;
+    background-color: var(--input-bg);
+    color: var(--text);
+    border: 1px solid var(--input-border);
+    border-radius: 6px;
+    font-family: inherit;
+    box-sizing: border-box;
+    transition: 0.3s;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.25);
+}
+
+textarea {
+    height: 100px;
+    resize: vertical;
+}
+
+.btn-group {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+button {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    color: white;
+    transition: 0.3s;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.btn-encrypt {
+    background-color: var(--primary);
+}
+
+.btn-encrypt:hover {
+    background-color: #991b1b;
+    box-shadow: 0 0 10px rgba(220, 38, 38, 0.5);
+}
+
+.btn-decrypt {
+    background-color: #1f2937;
+    border: 1px solid var(--primary);
+}
+
+.btn-decrypt:hover {
+    background-color: var(--primary);
+    box-shadow: 0 0 10px rgba(220, 38, 38, 0.5);
+}
+
+#outputArea {
+    margin-top: 20px;
+    padding: 15px;
+    background: #000000;
+    border: 1px dashed var(--primary);
+    border-radius: 6px;
+    word-break: break-all;
+    font-family: monospace;
+    font-size: 13px;
+    color: #fca5a5;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+#imagePreview {
+    max-width: 100%;
+    margin-top: 10px;
+    border-radius: 6px;
+    display: none;
+    border: 1px solid var(--input-border);
+}
+
+/* DESAIN TAB MENU */
+.tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 25px;
+    background: #111;
+    padding: 5px;
+    border-radius: 8px;
+    border: 1px solid #333;
+}
+
+.tab-btn {
+    flex: 1;
+    background: transparent;
+    color: #9ca3af;
+    border: none;
+    padding: 10px;
+    font-size: 14px;
+    border-radius: 6px;
+    box-shadow: none;
+}
+
+.tab-btn:hover {
+    color: white;
+    background: #262626;
+}
+
+.tab-btn.active {
+    background: var(--primary);
+    color: white;
+    font-weight: bold;
+    box-shadow: 0 0 15px rgba(220, 38, 38, 0.4);
+}
