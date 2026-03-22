@@ -455,13 +455,6 @@ document.getElementById('inputTxtFile').addEventListener('change', function(e) {
         let preview = document.getElementById('txtFilePreview');
         preview.innerText = txtFileContent;
         preview.style.display = 'block';
-        
-        // Jika mode dekripsi, otomatis dekripsi file yang baru di-upload
-        if (currentMode === 'decrypt') {
-            setTimeout(() => {
-                processData('decrypt');
-            }, 100); // Small delay untuk UI smooth
-        }
     };
     reader.readAsText(file);
 });
