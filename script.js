@@ -443,7 +443,7 @@ document.getElementById('inputTxtFile').addEventListener('change', function(e) {
     }
     
     if (file.size > WARN_TXT_SIZE) {
-        alert("⚠️ Peringatan: File teks cukup besar (" + (file.size / (1024*1024)).toFixed(2) + "MB). Proses enkripsi mungkin memakan waktu lebih lama.");
+        alert("⚠️ Peringatan: File teks cukup besar (" + (file.size / (1024*1024)).toFixed(2) + "MB). Proses enkripsi/dekripsi mungkin memakan waktu lebih lama.");
     }
 
     let reader = new FileReader();
@@ -455,6 +455,13 @@ document.getElementById('inputTxtFile').addEventListener('change', function(e) {
         let preview = document.getElementById('txtFilePreview');
         preview.innerText = txtFileContent;
         preview.style.display = 'block';
+        
+        // Jika mode dekripsi, otomatis dekripsi file yang baru di-upload
+        if (currentMode === 'decrypt') {
+            setTimeout(() => {
+                processData('decrypt');
+            }, 100); // Small delay untuk UI smooth
+        }
     };
     reader.readAsText(file);
 });
@@ -482,10 +489,23 @@ function processData(action) {
                 outputArea.innerText = bytesToBase64(encrypted);
                 lastOutputType = 'text';
             } else {
+                // MODE DEKRIPSI
                 let encBytes = base64ToBytes(input);
                 let decrypted = decryptCBC(encBytes, keyBytes);
-                outputArea.innerText = bytesToStr(decrypted);
-                lastOutputType = 'text';
+                let decryptedText = bytesToStr(decrypted);
+                
+                // Cek apakah hasil dekripsi adalah gambar (data:image/xxx)
+                if (decryptedText.startsWith("data:image/")) {
+                    // Hasil dekripsi adalah gambar - tampilkan sebagai gambar
+                    outputArea.innerText = "Gambar berhasil didekripsi! Lihat di bawah.";
+                    outputImage.src = decryptedText;
+                    outputImage.style.display = 'block';
+                    lastOutputType = 'image';
+                } else {
+                    // Hasil dekripsi adalah teks normale
+                    outputArea.innerText = decryptedText;
+                    lastOutputType = 'text';
+                }
             }
         } else if (type === 'image') {
             if (action === 'encrypt') {
@@ -518,8 +538,9 @@ function processData(action) {
                 outputArea.innerText = bytesToBase64(encrypted);
                 lastOutputType = 'text';
             } else {
-                let input = document.getElementById('inputText').value;
-                if (!input) return alert("Pindahkan Ciphertext hasil enkripsi teks ke kotak Teks untuk didekripsi!");
+                // MODE DEKRIPSI
+                let input = txtFileContent || document.getElementById('inputText').value;
+                if (!input) return alert("Unggah atau paste Ciphertext file teks untuk didekripsi!");
                 let encBytes = base64ToBytes(input);
                 let decrypted = decryptCBC(encBytes, keyBytes);
                 let decryptedText = bytesToStr(decrypted);
