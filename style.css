@@ -86,6 +86,66 @@ textarea {
     resize: vertical;
 }
 
+/* FITUR 1: Password toggle input group */
+.password-group {
+    position: relative;
+}
+
+.password-group input {
+    padding-right: 50px; /* Reservasi ruang untuk button mata */
+    width: 100%;
+    padding: 8px 12px;
+}
+
+.password-toggle-btn {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--primary);
+    font-size: 20px;
+    padding: 4px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.2s ease, color 0.2s ease;
+    min-width: auto;
+    height: 40px;
+    width: 40px;
+    z-index: 10;
+    line-height: 1;
+}
+
+.password-toggle-btn:hover {
+    opacity: 0.7;
+}
+
+.password-toggle-btn:active {
+    opacity: 0.5;
+}
+
+.password-toggle-btn:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.25);
+    border-radius: 4px;
+}
+
+/* FITUR 2: Metadata info styling */
+.metadata-info {
+    font-size: 12px;
+    color: #9ca3af;
+    margin-top: 8px;
+    padding: 8px;
+    background: rgba(31, 41, 55, 0.5);
+    border-radius: 4px;
+    border-left: 2px solid var(--primary);
+    min-height: 20px; /* MIN2: Ensure consistent height */
+    word-break: break-word; /* MIN2: Better text wrapping */
+}
+
 .btn-group {
     display: flex;
     gap: 10px;
@@ -105,6 +165,39 @@ button {
     letter-spacing: 1px;
 }
 
+/* C4: Disabled state styling */
+button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    box-shadow: none;
+    animation: none; /* Stop loading animation */
+}
+
+button:disabled:hover {
+    background-color: inherit;
+    box-shadow: none;
+    transform: none;
+}
+
+/* M8: Loading state untuk file input */
+#fileInputGroup.loading,
+#txtFileInputGroup.loading {
+    opacity: 0.8;
+    pointer-events: none;
+}
+
+/* C4: Loading animation untuk processing state */
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+button.loading,
+button.loading:hover {
+    animation: pulse 1.5s ease-in-out infinite;
+    cursor: wait;
+}
+
 .btn-encrypt {
     background-color: var(--primary);
 }
@@ -112,6 +205,11 @@ button {
 .btn-encrypt:hover {
     background-color: #991b1b;
     box-shadow: 0 0 10px rgba(220, 38, 38, 0.5);
+}
+
+.btn-encrypt:disabled,
+.btn-encrypt.loading {
+    background-color: var(--primary);
 }
 
 .btn-decrypt {
@@ -122,6 +220,33 @@ button {
 .btn-decrypt:hover {
     background-color: var(--primary);
     box-shadow: 0 0 10px rgba(220, 38, 38, 0.5);
+}
+
+/* C2: Custom scrollbar untuk outputArea */
+#outputArea::-webkit-scrollbar {
+    width: 8px;
+}
+
+#outputArea::-webkit-scrollbar-track {
+    background: #1a1a1a;
+    border-radius: 4px;
+}
+
+#outputArea::-webkit-scrollbar-thumb {
+    background: var(--primary);
+    border-radius: 4px;
+    opacity: 0.6;
+}
+
+#outputArea::-webkit-scrollbar-thumb:hover {
+    background: #991b1b;
+    opacity: 0.8;
+}
+
+/* Firefox scrollbar */
+#outputArea {
+    scrollbar-color: var(--primary) #1a1a1a;
+    scrollbar-width: thin;
 }
 
 #outputArea {
@@ -144,6 +269,32 @@ button {
     border-radius: 6px;
     display: none;
     border: 1px solid var(--input-border);
+}
+
+/* C2: Custom scrollbar untuk txtFilePreview */
+#txtFilePreview::-webkit-scrollbar {
+    width: 8px;
+}
+
+#txtFilePreview::-webkit-scrollbar-track {
+    background: var(--input-bg);
+    border-radius: 4px;
+}
+
+#txtFilePreview::-webkit-scrollbar-thumb {
+    background: var(--primary);
+    border-radius: 4px;
+    opacity: 0.6;
+}
+
+#txtFilePreview::-webkit-scrollbar-thumb:hover {
+    background: #991b1b;
+    opacity: 0.8;
+}
+
+#txtFilePreview {
+    scrollbar-color: var(--primary) var(--input-bg);
+    scrollbar-width: thin;
 }
 
 /* Styling tab menu */
@@ -178,6 +329,12 @@ button {
     color: white;
     font-weight: bold;
     box-shadow: 0 0 15px rgba(220, 38, 38, 0.4);
+}
+
+/* C4: Tab button disabled state */
+.tab-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 /* Animasi untuk notifikasi copy */

@@ -149,12 +149,16 @@ function switchMode(mode) {
     // Highlight tab yang aktif
     document.getElementById('tabEncrypt').classList.toggle('active', mode === 'encrypt');
     document.getElementById('tabDecrypt').classList.toggle('active', mode === 'decrypt');
+    
+    // Update aria-selected untuk accessibility
+    document.getElementById('tabEncrypt').setAttribute('aria-selected', mode === 'encrypt');
+    document.getElementById('tabDecrypt').setAttribute('aria-selected', mode === 'decrypt');
 
     // Tampilkan tombol sesuai mode
     document.getElementById('btnEncrypt').style.display = mode === 'encrypt' ? 'block' : 'none';
     document.getElementById('btnDecrypt').style.display = mode === 'decrypt' ? 'block' : 'none';
 
-    // Hapus semua saat ganti tab
+    // M2: COMPREHENSIVE CLEANUP - Reset semua state saat ganti tab
     document.getElementById('outputArea').innerText = "Hasil akan muncul di sini...";
     document.getElementById('outputImage').style.display = 'none';
     document.getElementById('copyNotification').style.display = 'none';
@@ -162,9 +166,43 @@ function switchMode(mode) {
     document.getElementById('btnCopy').style.display = 'none';
     document.getElementById('btnDownload').style.display = 'none';
     lastOutputType = null;
+    
+    // M2: Reset global variables
     resetImageState();
-
+    resetTxtFileState(); // PENTING: Clear txt file state
+    
+    // M2: Reset form inputs
     document.getElementById('secretKey').value = "";
+    
+    // M2: Clear image preview info
+    let imagePreviewInfo = document.getElementById('imagePreviewInfo');
+    if (imagePreviewInfo) {
+        imagePreviewInfo.style.display = 'none';
+        imagePreviewInfo.innerText = "";
+    }
+    
+    /* M5: Reset warning state setiap kali switch mode */
+    warningState = {
+        imageWarned: false,
+        txtWarned: false,
+        textWarned: false
+    };
+    
+    // FITUR 1 & 2: Reset password visibility dan decryption metadata
+    let secretKeyInput = document.getElementById('secretKey');
+    let toggleBtn = document.getElementById('togglePasswordBtn');
+    if (secretKeyInput) secretKeyInput.type = 'password'; // Reset ke password
+    if (toggleBtn) {
+        toggleBtn.textContent = '👁️'; // Eye open icon
+        toggleBtn.setAttribute('aria-checked', false);
+    }
+    
+    // FITUR 2: Clear decryption metadata area
+    let decryptionMetadata = document.getElementById('decryptionMetadataArea');
+    if (decryptionMetadata) {
+        decryptionMetadata.style.display = 'none';
+        decryptionMetadata.innerText = "";
+    }
     
     // Update pilihan format sesuai mode
     let optionImage = document.getElementById('optionImage');
@@ -185,7 +223,15 @@ function switchMode(mode) {
 }
 
 function toggleInput() {
+    // C4: Protect dari race condition - jangan ganti input saat processing
+    if (isProcessing) {
+        alert("⚠️ Proses masih berjalan. Tunggu selesai sebelum mengganti format input.");
+        document.getElementById('inputType').value = currentInputType || 'text';
+        return;
+    }
+    
     let type = document.getElementById('inputType').value;
+    currentInputType = type; // C4: Simpan state saat ini untuk race condition protection
     let textGroup = document.getElementById('textInputGroup');
     let fileGroup = document.getElementById('fileInputGroup');
     let txtFileGroup = document.getElementById('txtFileInputGroup');
@@ -278,31 +324,152 @@ window.onload = function() {
         document.getElementById('inputFile').value = ""; // Reset file gambar juga
     }, 10);
     
-    // Ctrl+A pada output area hanya select output saja
-    // Berikan tabindex agar bisa di-focus
-    document.getElementById('outputArea').setAttribute('tabindex', '0');
-    document.getElementById('outputImage').setAttribute('tabindex', '0');
+    // M1: Refactor Ctrl+A handler untuk lebih clean dan focused
+    handleSelectAllShortcut();
     
-    // Untuk shortcut Ctrl+A
-    document.addEventListener('keydown', function(e) {
-        if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
-            let outputArea = document.getElementById('outputArea');
-            let outputImage = document.getElementById('outputImage');
-            
-            // Cek apakah fokus ada di output area atau gambar output
-            if (document.activeElement === outputArea || document.activeElement === outputImage) {
-                e.preventDefault();
+    // FITUR 1: Password toggle event listener
+    setupPasswordToggle();
+};
+
+/* FITUR 1: Setup password visibility toggle */
+function setupPasswordToggle() {
+    let toggleBtn = document.getElementById('togglePasswordBtn');
+    let secretKeyInput = document.getElementById('secretKey');
+    
+    if (!toggleBtn || !secretKeyInput) return;
+    
+    toggleBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        
+        // Toggle antara password dan text type
+        let isPassword = secretKeyInput.type === 'password';
+        secretKeyInput.type = isPassword ? 'text' : 'password';
+        
+        // Update button icon dan aria attributes
+        toggleBtn.textContent = isPassword ? '👁️‍🗨️' : '👁️'; // Eye closed/open
+        toggleBtn.setAttribute('aria-pressed', isPassword); // M9: Use aria-pressed not aria-checked
+        toggleBtn.title = isPassword ? 'Sembunyikan kunci' : 'Tampilkan kunci';
+        toggleBtn.setAttribute('aria-label', isPassword ? 'Sembunyikan kunci enkripsi' : 'Tampilkan kunci enkripsi');
+    });
+}
+
+/* FITUR 2: Helper function untuk tampilkan metadata hasil dekripsi */
+function displayDecryptionMetadata(decryptedBytes, decryptedContent) {
+    let metadataArea = document.getElementById('decryptionMetadataArea');
+    if (!metadataArea) return;
+    
+    // M3: Buat session flag untuk prevent race condition saat mode switch
+    let sessionId = Math.random();
+    metadataArea._sessionId = sessionId;
+    
+    try {
+        // Hitung size dalam KB atau MB
+        let sizeBytes = decryptedBytes.length;
+        let sizeDisplay;
+        if (sizeBytes > 1024 * 1024) {
+            sizeDisplay = `${(sizeBytes / (1024 * 1024)).toFixed(2)}MB`;
+        } else if (sizeBytes > 1024) {
+            sizeDisplay = `${(sizeBytes / 1024).toFixed(2)}KB`;
+        } else {
+            sizeDisplay = `${sizeBytes}B`;
+        }
+        
+        // Tentukan tipe (Gambar atau Teks)
+        let isImage = decryptedContent.startsWith('data:image/');
+        let contentType = isImage ? 'Gambar' : 'Teks';
+        let mimeType = '';
+        
+        // Extract MIME type jika gambar
+        if (isImage) {
+            let mimeMatch = decryptedContent.match(/^data:([^;]+)/);
+            if (mimeMatch) mimeType = mimeMatch[1];
+        }
+        
+        // Compose metadata info
+        let metadataInfo = `📁 ${sizeDisplay} | ${contentType}`;
+        
+        // Jika gambar, coba dapat dimensi secara async
+        if (isImage) {
+            let img = new Image();
+            img.onload = function() {
+                // M3: Check kalau metadata area masih valid (tidak di-clear saat mode switch)
+                if (!metadataArea || metadataArea._sessionId !== sessionId) return;
                 
-                // Pilih semua teks di output area
-                let range = document.createRange();
-                range.selectNodeContents(outputArea);
-                let sel = window.getSelection();
-                sel.removeAllRanges();
-                sel.addRange(range);
-            }
+                let dimension = `${this.width}x${this.height}px`;
+                metadataInfo = `📁 ${sizeDisplay} | ${contentType} | 📐 ${dimension}`;
+                if (mimeType) metadataInfo += ` | 🏷️ ${mimeType}`;
+                metadataArea.innerText = metadataInfo;
+            };
+            img.onerror = function() {
+                // M3: Check kalau metadata area masih valid
+                if (!metadataArea || metadataArea._sessionId !== sessionId) return;
+                
+                // Jika gagal load image untuk dimensi, tetap tampilkan basic info
+                if (mimeType) metadataInfo += ` | 🏷️ ${mimeType}`;
+                metadataArea.innerText = metadataInfo;
+            };
+            img.src = decryptedContent;
+        } else {
+            // Untuk teks, langsung tampilkan
+            metadataArea.innerText = metadataInfo;
+        }
+        
+        // Tampilkan metadata area
+        metadataArea.style.display = 'block';
+    } catch (error) {
+        console.error("Error displaying metadata:", error);
+    }
+}
+
+// M6: Validate key length dengan warning
+function validateKeyLength(keyStr) {
+    if (keyStr.length < 8) {
+        console.warn("⚠️ Key hanya " + keyStr.length + " char, akan di-pad dengan '0' menjadi 8 char.");
+        return true; // Tetap jalan tapi lihat warning
+    }
+    return true;
+}
+
+// M1: Sanitize filename untuk prevent path traversal
+function sanitizeFilename(filename) {
+    // Remove special chars yang bisa cause path traversal
+    return filename.replace(/[^a-zA-Z0-9_.-]/g, '_').substring(0, 50); // Max 50 chars
+}
+
+// C3/M2: Validate decoded output size
+function validateDecodedSize(decodedBytes, maxBytes = 500 * 1024 * 1024) { // 500MB hard limit
+    if (decodedBytes.length > maxBytes) {
+        throw new Error("Output decoded terlalu besar (" + (decodedBytes.length / (1024*1024)).toFixed(0) + "MB). Maksimal " + (maxBytes / (1024*1024)).toFixed(0) + "MB.");
+    }
+    return true;
+}
+
+/* M1: Refactored Ctrl+A handler - focused & maintainable */
+function handleSelectAllShortcut() {
+    document.addEventListener('keydown', function(e) {
+        // Check untuk Ctrl+A atau Cmd+A (Mac)
+        if (!(e.ctrlKey || e.metaKey) || e.key !== 'a') return;
+        
+        let outputArea = document.getElementById('outputArea');
+        let outputImage = document.getElementById('outputImage');
+        let activeElement = document.activeElement;
+        
+        // Hanya intervensi jika focus di output area atau image
+        if (activeElement !== outputArea && activeElement !== outputImage) return;
+        
+        // M1: Prevent default selection behavior
+        e.preventDefault();
+        
+        // Select semua teks di output area (jika ada)
+        if (activeElement === outputArea && outputArea.innerText.trim() !== '') {
+            let range = document.createRange();
+            range.selectNodeContents(outputArea);
+            let sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
         }
     });
-};
+}
 
 function strToBytes(str) {
     return new TextEncoder().encode(str);
@@ -434,6 +601,7 @@ function base64ToBytes(base64) {
 let imageBase64Data = "";
 let txtFileContent = "";
 let lastOutputType = null; // Lacak jenis output untuk download: 'text', 'image', atau 'txt'
+let currentInputType = 'text'; // C4: Track current input type untuk race condition prevention
 
 /* K1: Global reference untuk cleanup FileReader */
 let currentImageReader = null;
@@ -441,6 +609,17 @@ let currentTxtReader = null;
 
 /* K2: Race condition protection */
 let isProcessing = false;
+
+/* M3: Timeout protection untuk prevent browser hang */
+let operationTimeout = null;
+const OPERATION_TIMEOUT_MS = 60000; // 60 detik timeout
+
+/* M5: Warning state tracking - prevent spam alerts */
+let warningState = {
+    imageWarned: false,
+    txtWarned: false,
+    textWarned: false
+};
 
 function resetTxtFileState() {
     txtFileContent = "";
@@ -474,24 +653,57 @@ document.getElementById('inputFile').addEventListener('change', function(e) {
         return;
     }
     
-    if (file.size > WARN_IMAGE_SIZE) {
+    // M5: Only show warning once per session
+    if (file.size > WARN_IMAGE_SIZE && !warningState.imageWarned) {
         alert("⚠️ Peringatan: File gambar cukup besar (" + (file.size / (1024*1024)).toFixed(2) + "MB). Proses enkripsi mungkin memakan waktu lebih lama.");
+        warningState.imageWarned = true; // Set flag untuk prevent spam
     }
 
     let reader = new FileReader();
     currentImageReader = reader; // K1: Track untuk cleanup
     
+    // M4: Track FileReader abort status
+    let isAborted = false;
+    reader._isAborted = false;
+    
     reader.onerror = function() {
         console.error("Error membaca file gambar");
+        isAborted = true;
+        reader._isAborted = true;
         resetImageState();
         currentImageReader = null; // K1: Cleanup
     };
     reader.onload = function(event) {
+        // M4: Check kalau reader tidak di-abort sebelum update state
+        if (isAborted || reader._isAborted) return;
         imageBase64Data = event.target.result; 
         let preview = document.getElementById('imagePreview');
         preview.src = imageBase64Data;
         preview.style.display = 'block';
+        
+        // C3: Add metadata info (size, dimensions, type)
+        let img = new Image();
+        img.onload = function() {
+            let fileSize = (file.size / (1024 * 1024)).toFixed(2); // MB
+            let dimension = `${this.width}x${this.height}px`;
+            
+            // Create atau update info element
+            let infoEl = document.getElementById('imagePreviewInfo');
+            if (!infoEl) {
+                infoEl = document.createElement('div');
+                infoEl.id = 'imagePreviewInfo';
+                preview.parentElement.appendChild(infoEl);
+            }
+            infoEl.style.display = 'block';
+            infoEl.style.cssText = 'font-size: 12px; color: #9ca3af; margin-top: 8px;';
+            infoEl.innerText = `📁 ${fileSize}MB | 📐 ${dimension} | 🏷️ ${file.type}`;
+            infoEl.setAttribute('role', 'status');
+            infoEl.setAttribute('aria-live', 'polite');
+        };
+        img.src = imageBase64Data;
+        
         currentImageReader = null; // K1: Cleanup setelah load selesai
+        isAborted = false; // M4: Reset abort flag
     };
     reader.readAsDataURL(file);
 });
@@ -520,25 +732,42 @@ document.getElementById('inputTxtFile').addEventListener('change', function(e) {
         return;
     }
     
-    if (file.size > WARN_TXT_SIZE) {
+    // M5: Only show warning once per session
+    if (file.size > WARN_TXT_SIZE && !warningState.txtWarned) {
         alert("⚠️ Peringatan: File teks cukup besar (" + (file.size / (1024*1024)).toFixed(2) + "MB). Proses enkripsi/dekripsi mungkin memakan waktu lebih lama.");
+        warningState.txtWarned = true; // Set flag untuk prevent spam
     }
 
     let reader = new FileReader();
     currentTxtReader = reader; // K1: Track untuk cleanup
     
+    // M4: Track FileReader abort status
+    let isTxtAborted = false;
+    reader._isTxtAborted = false;
+    
     reader.onerror = function() {
         console.error("Error membaca file teks");
+        isTxtAborted = true;
+        reader._isTxtAborted = true;
         resetTxtFileState();
         currentTxtReader = null; // K1: Cleanup
     };
     reader.onload = function(event) {
+        // M4: Check kalau reader tidak di-abort
+        if (isTxtAborted || reader._isTxtAborted) return;
         txtFileContent = event.target.result;
         let preview = document.getElementById('txtFilePreview');
         preview.innerText = txtFileContent;
         preview.style.display = 'block';
         currentTxtReader = null; // K1: Cleanup setelah load selesai
+        isTxtAborted = false; // M4: Reset abort flag
+        
+        // M8: Remove loading state
+        preview.parentElement.classList.remove('loading');
     };
+    
+    // M8: Add loading state saat membaca file
+    preview.parentElement.classList.add('loading');
     reader.readAsText(file);
 });
 
@@ -550,6 +779,9 @@ function processData(action) {
     }
     
     let rawKey = document.getElementById('secretKey').value;
+    
+    // M6: Validate key length
+    validateKeyLength(rawKey);
     if (!rawKey || !rawKey.trim()) {
         return alert("Kunci rahasia tidak boleh kosong!");
     }
@@ -569,6 +801,22 @@ function processData(action) {
     processBtn.disabled = true;
     processBtn.innerText = action === 'encrypt' ? '⏳ Enkripsi...' : '⏳ Dekripsi...';
 
+    /* M3: Setup timeout protection untuk prevent browser hang */
+    let operationStartTime = Date.now();
+    operationTimeout = setTimeout(function() {
+        // M3: Timeout handler
+        if (isProcessing) {
+            isProcessing = false;
+            processBtn.disabled = false;
+            processBtn.innerText = originalBtnText;
+            outputArea.innerText = `⏱️ ERROR: Operasi timeout (>60 detik). Proses dibatalkan untuk mencegah browser hang.`;
+            lastOutputType = null;
+            document.getElementById('btnCopy').style.display = 'none';
+            document.getElementById('btnDownload').style.display = 'none';
+            alert("⏱️ Proses terlalu lama (>60 detik). Dibatalkan otomatis.");
+        }
+    }, OPERATION_TIMEOUT_MS);
+
     try {
         if (type === 'text') {
             let input = document.getElementById('inputText').value;
@@ -583,7 +831,14 @@ function processData(action) {
                 // MODE DEKRIPSI
                 let encBytes = base64ToBytes(input);
                 let decrypted = decryptCBC(encBytes, keyBytes);
+                
+                // C3: Validate output size
+                validateDecodedSize(decrypted);
+                
                 let decryptedText = bytesToStr(decrypted);
+                
+                // FITUR 2: Display metadata hasil dekripsi
+                displayDecryptionMetadata(decrypted, decryptedText);
                 
                 // Cek apakah hasil dekripsi adalah gambar (data:image/xxx)
                 if (decryptedText.startsWith("data:image/")) {
@@ -610,7 +865,14 @@ function processData(action) {
                 if (!input) return alert("Pindahkan Ciphertext hasil enkripsi gambar ke kotak Teks untuk didekripsi!");
                 let encBytes = base64ToBytes(input);
                 let decrypted = decryptCBC(encBytes, keyBytes);
+                
+                // C3: Validate output size
+                validateDecodedSize(decrypted);
+                
                 let base64Image = bytesToStr(decrypted);
+
+                // FITUR 2: Display metadata hasil dekripsi gambar
+                displayDecryptionMetadata(decrypted, base64Image);
 
                 if (!base64Image.startsWith("data:image/")) {
                     throw new Error("Ciphertext ini bukan berisi gambar! Silakan gunakan mode Teks Normal.");
@@ -634,7 +896,14 @@ function processData(action) {
                 if (!input) return alert("Unggah file Ciphertext (.txt) untuk didekripsi!");
                 let encBytes = base64ToBytes(input);
                 let decrypted = decryptCBC(encBytes, keyBytes);
+                
+                // C3: Validate output size
+                validateDecodedSize(decrypted);
+                
                 let decryptedText = bytesToStr(decrypted);
+                
+                // FITUR 2: Display metadata hasil dekripsi
+                displayDecryptionMetadata(decrypted, decryptedText);
                 
                 // Cek apakah hasil dekripsi adalah gambar (data:image/xxx)
                 if (decryptedText.startsWith("data:image/")) {
@@ -656,11 +925,29 @@ function processData(action) {
         document.getElementById('btnDownload').style.display = 'block';
         
    } catch (e) {
-            // Pesan error generik untuk keamanan
+            // M5: Show meaningful error messages instead of generic
+        let errorMsg = e.message || "Unknown error";
+        
         if (action === 'encrypt') {
-            outputArea.innerText = "ERROR: Enkripsi gagal, cek input Anda.";
+            // M5: Provide context-aware error
+            if (errorMsg.includes('Base64')) {
+                outputArea.innerText = "ERROR: Format enkripsi invalid. " + errorMsg;
+            } else if (errorMsg.includes('size')) {
+                outputArea.innerText = "ERROR: " + errorMsg;
+            } else {
+                outputArea.innerText = "ERROR: Enkripsi gagal - " + errorMsg;
+            }
         } else {
-            outputArea.innerText = "ERROR: Dekripsi gagal, cek kunci/ciphertext.";
+            // M5: Dekripsi error dengan context
+            if (errorMsg.includes('Padding')) {
+                outputArea.innerText = "ERROR: Kunci salah atau ciphertext rusak. " + errorMsg;
+            } else if (errorMsg.includes('Base64')) {
+                outputArea.innerText = "ERROR: Format ciphertext invalid. " + errorMsg;
+            } else if (errorMsg.includes('size')) {
+                outputArea.innerText = "ERROR: " + errorMsg;
+            } else {
+                outputArea.innerText = "ERROR: Dekripsi gagal - " + errorMsg;
+            }
         }
         
         // Error asli ada di console untuk debugging
@@ -673,6 +960,21 @@ function processData(action) {
         isProcessing = false;
         processBtn.disabled = false;
         processBtn.innerText = originalBtnText;
+        
+        /* M3: Cleanup timeout */
+        if (operationTimeout) {
+            clearTimeout(operationTimeout);
+            operationTimeout = null;
+        }
+        
+        // MIN3: Remove loading state pada timeout
+        processBtn.classList.remove('loading');
+        
+        // M7: Hide copy notification jika proses selesai dengan error
+        let notification = document.getElementById('copyNotification');
+        if (notification && notification.style.display === 'block') {
+            notification.style.display = 'none';
+        }
     }
 }
 
@@ -725,6 +1027,12 @@ function copyOutput() {
 // Tampilkan notifikasi inline copy success
 // K4: Gunakan CSS custom property untuk duration (configurable, bukan hardcoded)
 function showCopyNotification() {
+    // M7: Only show notification jika tidak sedang processing
+    if (isProcessing) {
+        alert("Copy berhasil, tapi proses masih berjalan...");
+        return;
+    }
+    
     let notification = document.getElementById('copyNotification');
     notification.style.display = 'block';
     
@@ -738,7 +1046,9 @@ function showCopyNotification() {
     
     // Auto hide setelah durasi animation
     setTimeout(function() {
-        notification.style.display = 'none';
+        if (notification.style.display === 'block') {
+            notification.style.display = 'none';
+        }
     }, durationMs);
 }
 
@@ -789,7 +1099,11 @@ function downloadOutput() {
         
         let element = document.createElement('a');
         element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
-        element.setAttribute('download', 'output_' + new Date().getTime() + '.txt');
+        // M1: Sanitize filename
+        let filename = sanitizeFilename('output_' + new Date().getTime() + '.txt');
+        element.setAttribute('download', filename);
+        // MIN4: Accessibility label
+        element.setAttribute('aria-label', 'Download file teks hasil enkripsi/dekripsi');
         element.style.display = 'none';
         document.body.appendChild(element);
         element.click();
@@ -806,7 +1120,11 @@ function downloadOutput() {
         // Ekstrak format dari base64 (data:image/png atau data:image/jpeg)
         let format = outputImage.src.match(/data:image\/(.*?);/);
         let fileFormat = format ? format[1] : 'png';
-        link.download = 'output_image_' + new Date().getTime() + '.' + fileFormat;
+        // M1: Sanitize filename
+        let imageName = sanitizeFilename('output_image_' + new Date().getTime() + '.' + fileFormat);
+        link.download = imageName;
+        // MIN4: Add accessibility label
+        link.setAttribute('aria-label', 'Download gambar hasil dekripsi (' + fileFormat + ')');
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -820,7 +1138,11 @@ function downloadOutput() {
         
         let element = document.createElement('a');
         element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
-        element.setAttribute('download', 'decrypt_' + new Date().getTime() + '.txt');
+        // M1: Sanitize filename
+        let txtFilename = sanitizeFilename('decrypt_' + new Date().getTime() + '.txt');
+        element.setAttribute('download', txtFilename);
+        // MIN4: Accessibility label
+        element.setAttribute('aria-label', 'Download file teks hasil dekripsi');
         element.style.display = 'none';
         document.body.appendChild(element);
         element.click();

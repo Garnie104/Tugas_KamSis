@@ -12,19 +12,24 @@
     <h1>Aplikasi Kriptografi</h1>
     <p class="subtitle"></p>
 
-    <div class="tabs">
-        <button id="tabEncrypt" class="tab-btn active" onclick="switchMode('encrypt')">🔒 MODE ENKRIPSI</button>
-        <button id="tabDecrypt" class="tab-btn" onclick="switchMode('decrypt')">🔓 MODE DEKRIPSI</button>
+    <div class="tabs" role="tablist" aria-label="Mode operasi enkripsi atau dekripsi">
+        <button id="tabEncrypt" class="tab-btn active" role="tab" aria-selected="true" aria-controls="encrypt-content" onclick="switchMode('encrypt')">🔒 MODE ENKRIPSI</button>
+        <button id="tabDecrypt" class="tab-btn" role="tab" aria-selected="false" aria-controls="decrypt-content" onclick="switchMode('decrypt')">🔓 MODE DEKRIPSI</button>
     </div>
 
     <div class="form-group">
-        <label>1. Masukkan Kunci (Maks 8 karakter):</label>
-        <input type="text" id="secretKey" placeholder="Contoh: KUNCI123" maxlength="8" autocomplete="off">
+        <label for="secretKey">1. Masukkan Kunci (Maks 8 karakter):</label>
+        <!-- FITUR 1: Password toggle container -->
+        <div class="password-group">
+            <input type="password" id="secretKey" placeholder="Contoh: KUNCI123" maxlength="8" aria-label="Masukkan kunci enkripsi maksimal 8 karakter" aria-describedby="keyHelp" autocomplete="off">
+            <button type="button" id="togglePasswordBtn" class="password-toggle-btn" aria-label="Tampilkan atau sembunyikan kunci" role="button" aria-pressed="false" title="Tampilkan kunci">👁️</button>
+        </div>
+        <small id="keyHelp" style="color: #9ca3af; font-size: 12px; display: block; margin-top: 4px;">Gunakan kombinasi huruf, angka, atau simbol</small>
     </div>
 
     <div class="form-group">
-        <label>2. Pilih Tipe Format:</label>
-        <select id="inputType" onchange="toggleInput()">
+        <label for="inputType">2. Pilih Tipe Format:</label>
+        <select id="inputType" onchange="toggleInput()" aria-label="Pilih format input: Teks Normal, File Gambar, atau File Teks">
             <option value="text">Teks Normal</option>
             <option value="image" id="optionImage">File Gambar (.png / .jpg)</option>
             <option value="txt">File Teks (.txt)</option>
@@ -32,20 +37,23 @@
     </div>
 
     <div class="form-group" id="fileInputGroup" style="display: none;">
-        <label id="fileInputLabel">3. Unggah File Gambar:</label>
-        <input type="file" id="inputFile" accept="image/*" style="padding: 6px;">
-        <img id="imagePreview" alt="Preview">
+        <label for="inputFile" id="fileInputLabel">3. Unggah File Gambar:</label>
+        <input type="file" id="inputFile" accept="image/*" style="padding: 6px;" aria-label="Unggah file gambar untuk dienkripsi" aria-describedby="fileHelp">
+        <small id="fileHelp" style="color: #9ca3af; font-size: 12px; display: block; margin-top: 4px;">Maksimal 50MB. Format: PNG, JPG, JPEG, GIF, WebP</small>
+        <img id="imagePreview" alt="Preview gambar yang dipilih">
     </div>
 
     <div class="form-group" id="txtFileInputGroup" style="display: none;">
-        <label id="txtFileInputLabel">3. Unggah File Teks (.txt):</label>
-        <input type="file" id="inputTxtFile" accept=".txt,text/plain" style="padding: 6px;">
-        <div id="txtFilePreview" style="margin-top: 10px; padding: 10px; background: var(--surface); border-radius: 4px; display: none; max-height: 200px; overflow-y: auto; color: var(--text); white-space: pre-wrap; word-break: break-all; font-size: 12px;"></div>
+        <label for="inputTxtFile" id="txtFileInputLabel">3. Unggah File Teks (.txt):</label>
+        <input type="file" id="inputTxtFile" accept=".txt,text/plain" style="padding: 6px;" aria-label="Unggah file teks untuk dienkripsi atau dekripsi" aria-describedby="txtFileHelp">
+        <small id="txtFileHelp" style="color: #9ca3af; font-size: 12px; display: block; margin-top: 4px;">Maksimal 10MB</small>
+        <div id="txtFilePreview" style="margin-top: 10px; padding: 10px; background: var(--surface); border-radius: 4px; display: none; max-height: 200px; overflow-y: auto; color: var(--text); white-space: pre-wrap; word-break: break-all; font-size: 12px;" role="region" aria-label="Preview konten file teks"></div>
     </div>
 
     <div class="form-group" id="textInputGroup">
-        <label id="textInputLabel">3. Masukkan Pesan:</label>
-        <textarea id="inputText" placeholder="Ketik atau paste teks di sini..." autocomplete="off"></textarea>
+        <label for="inputText" id="textInputLabel">3. Masukkan Pesan:</label>
+        <textarea id="inputText" placeholder="Ketik atau paste teks di sini..." autocomplete="off" aria-describedby="textHelp" aria-label="Masukkan atau paste pesan untuk dienkripsi/dekripsi"></textarea>
+        <small id="textHelp" style="color: #9ca3af; font-size: 12px; display: block; margin-top: 4px;">Enkripsi: Max 5MB | Dekripsi: Max 150MB (untuk ciphertext dari file besar)</small>
     </div>
 
     <div class="btn-group">
@@ -54,11 +62,17 @@
     </div>
 
     <label style="margin-top: 20px; color: var(--primary);">Output (Hasil):</label>
-    <div id="outputArea">Hasil akan muncul di sini...</div>
-    <img id="outputImage" style="max-width: 100%; margin-top: 10px; border-radius: 6px; display: none; border: 1px solid var(--primary);">
+    <div id="outputArea" role="region" aria-label="Hasil enkripsi atau dekripsi" aria-live="polite" aria-atomic="true" tabindex="0">Hasil akan muncul di sini...</div>
+    <img id="outputImage" style="max-width: 100%; margin-top: 10px; border-radius: 6px; display: none; border: 1px solid var(--primary);" alt="Gambar hasil dekripsi" tabindex="0">
     
-    <!-- Notifikasi inline untuk copy success (K4: uses CSS custom property) -->
-    <div id="copyNotification" style="display: none; margin-top: 10px; padding: 12px; background-color: #10b981; color: white; border-radius: 6px; text-align: center; font-size: 14px; font-weight: bold;" aria-live="polite" aria-atomic="true">
+    <!-- C3: Image metadata info -->
+    <div id="imagePreviewInfo" style="display: none; font-size: 12px; color: #9ca3af; margin-top: 8px;" role="status" aria-live="polite"></div>
+    
+    <!-- FITUR 2: Decryption metadata display -->
+    <div id="decryptionMetadataArea" class="metadata-info" style="display: none; font-size: 12px; color: #9ca3af; margin-top: 8px;" role="status" aria-live="polite" aria-label="Metadata hasil dekripsi"></div>
+    
+    <!-- Notifikasi inline untuk copy success -->
+    <div id="copyNotification" style="display: none; margin-top: 10px; padding: 12px; background-color: #10b981; color: white; border-radius: 6px; text-align: center; font-size: 14px; font-weight: bold;" role="status" aria-live="assertive" aria-atomic="true">
         ✅ Output berhasil dicopy ke clipboard!
     </div>
     
