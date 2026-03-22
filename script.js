@@ -1,44 +1,44 @@
 
-// Membuat S-Box sederhana (Tabel Substitusi)
+// Tabel substitusi byte - buat saat loading
 const S_BOX = new Uint8Array(256);
 for (let i = 0; i < 256; i++) {
     S_BOX[i] = (i * 31 + 17) % 256; 
 }
 
-// Fungsi Rotasi Bit ke Kiri (Transposisi)
+// Rotasi bit - penting buat diffusion
 function rotl8(val, shift) {
     return ((val << shift) | (val >>> (8 - shift))) & 0xFF;
 }
 
-// Fungsi Inti Feistel
+// Feistel function - core dari cipher ini
 function feistelFunction(rightHalf, subKey) {
     let out = new Uint8Array(4);
     for (let i = 0; i < 4; i++) {
-        let xored = rightHalf[i] ^ subKey[i]; 
-        let substituted = S_BOX[xored];       
-        out[i] = rotl8(substituted, 2);       
+        let xored = rightHalf[i] ^ subKey[i];
+        let substituted = S_BOX[xored];
+        out[i] = rotl8(substituted, 2);
     }
     return out;
 }
 
-// --- PERBAIKAN: Fungsi Pengambil Sub-Kunci (Key Processor) ---
+// Generate subkey untuk tiap round - pake circular shift
 function getSubKey(key, round) {
     let subKey = new Uint8Array(4);
     for(let i = 0; i < 4; i++) {
-        // Melakukan pergeseran melingkar agar ke-8 karakter selalu terpakai merata
-        // Ronde 0: indeks 0,1,2,3 | Ronde 1: 2,3,4,5 | Ronde 2: 4,5,6,7 | Ronde 3: 6,7,0,1
+        // Gunakan modulo agar semua karakter kunci terpakai merata
+        // Round 0: 0,1,2,3 | Round 1: 2,3,4,5 | Round 2: 4,5,6,7 | Round 3: 6,7,0,1
         subKey[i] = key[(round * 2 + i) % 8]; 
     }
     return subKey;
 }
 
-// FUNGSI ENKRIPSI 1 BLOK
+// Enkripsi 1 blok (8 byte) pake Feistel 4 rounds
 function encryptBlock(block, key) {
     let L = block.slice(0, 4);
     let R = block.slice(4, 8);
     
     for (let round = 0; round < 4; round++) {
-        let subKey = getSubKey(key, round); // Memanggil Key Processor yang baru
+        let subKey = getSubKey(key, round);
         let fResult = feistelFunction(R, subKey);
         let newR = new Uint8Array(4);
         for(let i=0; i<4; i++) newR[i] = L[i] ^ fResult[i];
@@ -51,14 +51,14 @@ function encryptBlock(block, key) {
     return out;
 }
 
-// FUNGSI DEKRIPSI 1 BLOK
+// Dekripsi 1 blok - jalankan Feistel mundur
 function decryptBlock(block, key) {
     let currR = block.slice(0, 4); 
     let currL = block.slice(4, 8); 
 
-    // Feistel berjalan mundur
+    // Mundur dari round 3 ke 0
     for (let round = 3; round >= 0; round--) {
-        let subKey = getSubKey(key, round); // Memanggil Key Processor yang baru
+        let subKey = getSubKey(key, round);
         
         let fResult = feistelFunction(currL, subKey);
         let nextL = new Uint8Array(4);
@@ -73,7 +73,7 @@ function decryptBlock(block, key) {
     return out;
 }
 
-// MODE CBC ENKRIPSI
+// CBC mode - XOR dengan IV dulu, terus chain blocks
 function encryptCBC(plaintextBytes, keyBytes) {
     let padLen = 8 - (plaintextBytes.length % 8);
     let padded = new Uint8Array(plaintextBytes.length + padLen);
@@ -99,7 +99,7 @@ function encryptCBC(plaintextBytes, keyBytes) {
     return ciphertext;
 }
 
-// MODE CBC DEKRIPSI
+// CBC mode decrypt - ambil IV dari awal ciphertext
 function decryptCBC(ciphertextBytes, keyBytes) {
     if (ciphertextBytes.length < 16) {
         throw new Error("Ciphertext terlalu pendek. Minimal harus berisi IV + 1 blok data.");
@@ -131,8 +131,8 @@ function decryptCBC(ciphertextBytes, keyBytes) {
     return decryptedPadded.slice(0, decryptedPadded.length - padLen);
 }
 
-// --- FUNGSI BANTUAN UI MENU TAB (BARU) ---
-let currentMode = 'encrypt'; // Default saat web dibuka
+// UI functions buat tab switching
+let currentMode = 'encrypt'; // enkripsi atau dekripsi?
 
 function resetImageState() {
     imageBase64Data = "";
@@ -146,25 +146,25 @@ function resetImageState() {
 function switchMode(mode) {
     currentMode = mode;
     
-    // Ganti warna tombol tab yang aktif
+    // Highlight tab yang aktif
     document.getElementById('tabEncrypt').classList.toggle('active', mode === 'encrypt');
     document.getElementById('tabDecrypt').classList.toggle('active', mode === 'decrypt');
 
-    // Sembunyikan/Tampilkan tombol eksekusi utama
+    // Tampilkan tombol sesuai mode
     document.getElementById('btnEncrypt').style.display = mode === 'encrypt' ? 'block' : 'none';
     document.getElementById('btnDecrypt').style.display = mode === 'decrypt' ? 'block' : 'none';
 
-    // Bersihkan layar output dan input setiap pindah tab
+    // Hapus semua saat ganti tab
     document.getElementById('outputArea').innerText = "Hasil akan muncul di sini...";
     document.getElementById('outputImage').style.display = 'none';
     document.getElementById('inputText').value = ""; 
-    document.getElementById('btnDownload').style.display = 'none'; // Reset tombol download
-    lastOutputType = null; // Reset tracking output
+    document.getElementById('btnDownload').style.display = 'none';
+    lastOutputType = null;
     resetImageState();
 
     document.getElementById('secretKey').value = "";
     
-    // Panggil toggleInput untuk mengatur ulang label dan kotak yang muncul
+    // Perbarui form sesuai mode
     toggleInput();
 }
 
@@ -199,7 +199,7 @@ function toggleInput() {
             txtFileLabel.innerText = "3. Unggah File Teks yang akan disandikan:";
             resetImageState();
         }
-    } else { // MODE DECRYPT
+    } else { // MODE DEKRIPSI
         if (type === 'text') {
             textGroup.style.display = 'block';
             fileGroup.style.display = 'none';
@@ -208,8 +208,8 @@ function toggleInput() {
             resetImageState();
             resetTxtFileState();
         } else if (type === 'image') {
-            textGroup.style.display = 'block'; // Tampilkan teks untuk paste sandi
-            fileGroup.style.display = 'none';  // Sembunyikan upload, karena kita mendekripsi dari teks
+            textGroup.style.display = 'block'; // Tampilkan teks untuk paste teks sandi
+            fileGroup.style.display = 'none';  // Sembunyikan upload, karena dekripsi dari teks
             txtFileGroup.style.display = 'none';
             textLabel.innerText = "3. Paste Ciphertext Gambar (Teks Super Panjang) di sini:";
             resetImageState();
@@ -225,15 +225,15 @@ function toggleInput() {
     }
 }
 
-// Validasi ukuran text input (warn jika terlalu besar)
+// Jangan biarkan user input text lebih dari 5MB
 document.getElementById('inputText').addEventListener('input', function(e) {
-    const MAX_TEXT_SIZE = 5 * 1024 * 1024; // 5MB limit untuk teks
-    const WARN_TEXT_SIZE = 1 * 1024 * 1024; // Warn di 1MB
+    const MAX_TEXT_SIZE = 5 * 1024 * 1024; // Batas maksimal 5MB
+    const WARN_TEXT_SIZE = 1 * 1024 * 1024; // Peringatan di 1MB
     
     let textBytes = new TextEncoder().encode(this.value).length;
     
     if (textBytes > MAX_TEXT_SIZE) {
-        // Potong teks agar tidak melebihi batas
+    // Potong otomatis jika terlalu besar
         let encoded = new TextEncoder().encode(this.value);
         let trimmed = new TextDecoder().decode(encoded.slice(0, MAX_TEXT_SIZE));
         this.value = trimmed;
@@ -246,36 +246,34 @@ document.getElementById('inputText').addEventListener('input', function(e) {
     }
 });
 
-// Jalankan pengaturan UI pertama kali saat web dimuat
+// Initialize saat page load
 window.onload = function() {
-    // Jalankan switchMode untuk mengatur tampilan awal
+    // Jalankan switchMode untuk setup awal
     switchMode('encrypt');
 
-    // MENGHANCURKAN CACHE BROWSER SECARA PAKSA
-    // Kita gunakan setTimeout (jeda 10 milidetik) agar kode ini dieksekusi 
-    // TEPAT SETELAH browser selesai mencoba memasukkan data autofill-nya.
+    // Bersihkan autofill - browser suka auto-fill form, ini trik agar jangan
     setTimeout(() => {
         document.getElementById('secretKey').value = "";
         document.getElementById('inputText').value = "";
         document.getElementById('inputFile').value = ""; // Reset file gambar juga
     }, 10);
     
-    // FITUR BARU: Ctrl+A pada output area hanya select bagian output saja
-    // Tambahkan tabindex agar output area bisa menerima focus
+    // Ctrl+A pada output area hanya select output saja
+    // Berikan tabindex agar bisa di-focus
     document.getElementById('outputArea').setAttribute('tabindex', '0');
     document.getElementById('outputImage').setAttribute('tabindex', '0');
     
-    // Deteksi Ctrl+A pada document level
+    // Dengarkan untuk shortcut Ctrl+A
     document.addEventListener('keydown', function(e) {
         if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
             let outputArea = document.getElementById('outputArea');
             let outputImage = document.getElementById('outputImage');
             
-            // Check apakah fokus ada di output area atau gambar output
+            // Cek apakah fokus ada di output area atau gambar output
             if (document.activeElement === outputArea || document.activeElement === outputImage) {
                 e.preventDefault();
                 
-                // Select semua text di output area menggunakan Selection API
+                // Pilih semua teks di output area
                 let range = document.createRange();
                 range.selectNodeContents(outputArea);
                 let sel = window.getSelection();
@@ -294,29 +292,27 @@ function bytesToStr(bytes) {
     return new TextDecoder().decode(bytes);
 }
 
-// ====================================================================
-// FUNGSI BASE64 KUSTOM (TANPA MENGGUNAKAN WINDOW.BTOA / WINDOW.ATOB)
-// Memenuhi syarat mutlak "Dilarang menggunakan library / fungsi bawaan"
-// ====================================================================
+// Custom Base64 encoding/decoding - ga boleh pake btoa/atob
+// Harus built from scratch
 
 const BASE64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 
-// Konversi Bytes (Uint8Array) ke Teks Base64 (Pengganti btoa)
+// Convert bytes to Base64 string
 function bytesToBase64(bytes) {
     let result = '';
     let i = 0;
     let length = bytes.length;
 
     while (i < length) {
-        // Hitung sisa byte yang belum diproses di putaran ini
+        // Cek berapa byte tersisa
         let left = length - i; 
         
         let b1 = bytes[i++];
         let b2 = i < length ? bytes[i++] : 0;
         let b3 = i < length ? bytes[i++] : 0;
 
-        // Pecah 24 bit menjadi 4 potongan (masing-masing 6 bit)
+        // Bagi 24 bit menjadi 4 bagian dari 6 bit
         let enc1 = b1 >> 2;
         let enc2 = ((b1 & 3) << 4) | (b2 >> 4);
         let enc3 = ((b2 & 15) << 2) | (b3 >> 6);
@@ -325,14 +321,14 @@ function bytesToBase64(bytes) {
         result += BASE64_CHARS.charAt(enc1);
         result += BASE64_CHARS.charAt(enc2);
         
-        // PERBAIKAN: Logika penambahan '=' yang jauh lebih akurat
+        // Tambahkan padding '=' jika diperlukan
         result += (left === 1) ? '=' : BASE64_CHARS.charAt(enc3);
         result += (left === 1 || left === 2) ? '=' : BASE64_CHARS.charAt(enc4);
     }
     return result;
 }
 
-// Konversi Teks Base64 ke Bytes (Pengganti atob)
+// Decode Base64 back to bytes
 function base64ToBytes(base64) {
     if (/[^A-Za-z0-9+/=\s]/.test(base64)) {
         throw new Error("Ciphertext mengandung karakter tidak valid!");
@@ -346,7 +342,7 @@ function base64ToBytes(base64) {
         throw new Error("Format Ciphertext tidak valid atau terpotong!");
     }
 
-    // PERBAIKAN 2: Gunakan variabel 'str' yang sudah bersih dari spasi
+    // Hitung padding untuk kalkulasi panjang
     let padding = 0;
     if (str.endsWith("==")) padding = 2;
     else if (str.endsWith("=")) padding = 1;
@@ -374,7 +370,7 @@ function base64ToBytes(base64) {
 
 let imageBase64Data = "";
 let txtFileContent = "";
-let lastOutputType = null; // Tracking untuk download: 'text', 'image', atau 'txt'
+let lastOutputType = null; // Lacak jenis output untuk download: 'text', 'image', atau 'txt'
 
 function resetTxtFileState() {
     txtFileContent = "";
@@ -392,9 +388,9 @@ document.getElementById('inputFile').addEventListener('change', function(e) {
         return;
     }
 
-    // Validasi ukuran file gambar (50MB max, warn di 20MB)
-    const MAX_IMAGE_SIZE = 50 * 1024 * 1024; // 50MB
-    const WARN_IMAGE_SIZE = 20 * 1024 * 1024; // 20MB
+    // Cegah user upload gambar terlalu besar
+    const MAX_IMAGE_SIZE = 50 * 1024 * 1024; // Batas maksimal 50MB
+    const WARN_IMAGE_SIZE = 20 * 1024 * 1024; // Peringatan di 20MB
     
     if (file.size > MAX_IMAGE_SIZE) {
         alert("❌ Ukuran file gambar terlalu besar! Maksimal 50MB.");
@@ -427,9 +423,9 @@ document.getElementById('inputTxtFile').addEventListener('change', function(e) {
         return;
     }
 
-    // Validasi ukuran file txt (10MB max, warn di 5MB)
-    const MAX_TXT_SIZE = 10 * 1024 * 1024; // 10MB
-    const WARN_TXT_SIZE = 5 * 1024 * 1024; // 5MB
+    // Batasi ukuran file teks
+    const MAX_TXT_SIZE = 10 * 1024 * 1024; // Batas maksimal 10MB
+    const WARN_TXT_SIZE = 5 * 1024 * 1024; // Peringatan di 5MB
     
     if (file.size > MAX_TXT_SIZE) {
         alert("❌ Ukuran file teks terlalu besar! Maksimal 10MB.");
@@ -523,19 +519,18 @@ function processData(action) {
             }
         }
         
-        // BARU: Tampilkan tombol download setelah output berhasil dibuat
+        // Tampilkan tombol download setelah output berhasil dibuat
         document.getElementById('btnDownload').style.display = 'block';
         
    } catch (e) {
-        // --- PERBAIKAN: Pesan error generik untuk mencegah "Oracle Attack" ---
+            // Pesan error generik untuk keamanan
         if (action === 'encrypt') {
-            outputArea.innerText = "ERROR: Proses enkripsi gagal. Periksa kembali input Anda.";
+            outputArea.innerText = "ERROR: Enkripsi gagal, cek input Anda.";
         } else {
-            outputArea.innerText = "ERROR: Proses dekripsi gagal. Pastikan Kunci Rahasia dan Ciphertext sudah benar.";
+            outputArea.innerText = "ERROR: Dekripsi gagal, cek kunci/ciphertext.";
         }
         
-        // Pesan error aslinya tetap kita simpan secara rahasia di Console Browser (F12) 
-        // agar Anda (sebagai developer) tetap bisa melacak jika ada bug sungguhan.
+        // Error asli ada di console untuk debugging
         console.error("System Log (Developer Only):", e.message);
         lastOutputType = null;
         document.getElementById('btnDownload').style.display = 'none';
@@ -551,7 +546,7 @@ function downloadOutput() {
     let outputImage = document.getElementById('outputImage');
     
     if (lastOutputType === 'text') {
-        // Download text output (ciphertext atau plaintext)
+        // Download output teks (ciphertext atau plaintext)
         let text = outputArea.innerText;
         if (!text || text.includes("Hasil akan muncul") || text.includes("ERROR")) {
             return alert("Tidak ada output valid untuk diunduh!");
@@ -566,14 +561,14 @@ function downloadOutput() {
         document.body.removeChild(element);
         
     } else if (lastOutputType === 'image') {
-        // Download image output (base64 gambar)
+        // Download output gambar (base64)
         if (!outputImage.src || outputImage.style.display === 'none') {
             return alert("Tidak ada gambar untuk diunduh!");
         }
         
         let link = document.createElement('a');
         link.href = outputImage.src;
-        // Extract format dari base64 (data:image/png atau data:image/jpeg)
+        // Ekstrak format dari base64 (data:image/png atau data:image/jpeg)
         let format = outputImage.src.match(/data:image\/(.*?);/);
         let fileFormat = format ? format[1] : 'png';
         link.download = 'output_image_' + new Date().getTime() + '.' + fileFormat;
@@ -582,7 +577,7 @@ function downloadOutput() {
         document.body.removeChild(link);
         
     } else if (lastOutputType === 'txt') {
-        // Download txt file output (plaintext dari decrypt txt file)
+        // Download output file teks (plaintext dari dekripsi file txt)
         let text = outputArea.innerText;
         if (!text || text.includes("Hasil akan muncul") || text.includes("ERROR")) {
             return alert("Tidak ada output valid untuk diunduh!");

@@ -1,4 +1,4 @@
-/* TEMA MERAH HITAM (CYBERSECURITY) */
+/* Tema merah gelap - vibe cybersecurity */
 :root {
     --primary: #dc2626;
     --bg: #0a0a0a;
@@ -143,7 +143,7 @@ button {
     border: 1px solid var(--input-border);
 }
 
-/* DESAIN TAB MENU */
+/* Styling tab menu */
 .tabs {
     display: flex;
     gap: 10px;
