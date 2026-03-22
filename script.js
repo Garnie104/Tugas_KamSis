@@ -263,7 +263,7 @@ window.onload = function() {
     document.getElementById('outputArea').setAttribute('tabindex', '0');
     document.getElementById('outputImage').setAttribute('tabindex', '0');
     
-    // Dengarkan untuk shortcut Ctrl+A
+    // Untuk shortcut Ctrl+A
     document.addEventListener('keydown', function(e) {
         if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
             let outputArea = document.getElementById('outputArea');
