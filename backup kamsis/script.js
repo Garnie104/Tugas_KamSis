@@ -280,6 +280,16 @@ function toggleInput() {
             resetImageState();
         }
     }
+    
+    // Update teks bantuan ukuran file .txt berdasarkan mode
+    let txtSizeHelpElement = document.getElementById('txtFileHelp');
+    if (txtSizeHelpElement) {
+        if (currentMode === 'encrypt') {
+            txtSizeHelpElement.innerText = 'Maksimal 10MB';
+        } else {
+            txtSizeHelpElement.innerText = 'Maksimal 150MB';
+        }
+    }
 }
 
 // Batasi ukuran input text tergantung mode
@@ -476,7 +486,8 @@ function strToBytes(str) {
 }
 
 function bytesToStr(bytes) {
-    return new TextDecoder().decode(bytes);
+    // Gunakan fatal: true agar melempar TypeError jika hasil dekripsi adalah biner sampah (invalid UTF-8) akibat kunci salah
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
 }
 
 /* K5: XSS Protection - Sanitize output sebelum display */
@@ -596,6 +607,18 @@ function base64ToBytes(base64) {
         // Re-throw dengan konteks yang lebih jelas
         throw new Error(`Base64 decode error: ${error.message}`);
     }
+}
+
+/* FITUR 3: Data Integrity - Custom Hash Generator (DJB2 variant) */
+function generateCustomHash(str) {
+    // Algoritma DJB2 dengan bitwise shift dan XOR
+    let hash = 5381; // Prime seed
+    for (let i = 0; i < str.length; i++) {
+        let char = str.charCodeAt(i);
+        hash = ((hash << 5) + hash) ^ char; // (hash * 33) ^ char
+    }
+    // Convert ke 32-bit unsigned integer dan format sebagai hex
+    return (hash >>> 0).toString(16).padStart(8, '0');
 }
 
 let imageBase64Data = "";
@@ -722,12 +745,18 @@ document.getElementById('inputTxtFile').addEventListener('change', function(e) {
         currentTxtReader = null;
     }
 
-    // Batasi ukuran file teks
-    const MAX_TXT_SIZE = 10 * 1024 * 1024; // Batas maksimal 10MB
-    const WARN_TXT_SIZE = 5 * 1024 * 1024; // Peringatan di 5MB
+    // Batasi ukuran file teks - DINAMIS berdasarkan mode
+    const isDecryptMode = currentMode === 'decrypt';
+    const MAX_TXT_SIZE = isDecryptMode ? 
+        150 * 1024 * 1024 :      // Dekripsi: Maks 150MB
+        10 * 1024 * 1024;        // Enkripsi: Maks 10MB
+    const WARN_TXT_SIZE = isDecryptMode ? 
+        50 * 1024 * 1024 :       // Dekripsi: Peringatan 50MB
+        5 * 1024 * 1024;         // Enkripsi: Peringatan 5MB
     
     if (file.size > MAX_TXT_SIZE) {
-        alert("❌ Ukuran file teks terlalu besar! Maksimal 10MB.");
+        let maxMB = (MAX_TXT_SIZE / (1024*1024)).toFixed(0);
+        alert("❌ Ukuran file teks terlalu besar! Maksimal " + maxMB + "MB.");
         resetTxtFileState();
         return;
     }
@@ -740,6 +769,7 @@ document.getElementById('inputTxtFile').addEventListener('change', function(e) {
 
     let reader = new FileReader();
     currentTxtReader = reader; // K1: Track untuk cleanup
+    let preview = document.getElementById('txtFilePreview'); // FIX: Declare preview di sini agar accessible di luar callback
     
     // M4: Track FileReader abort status
     let isTxtAborted = false;
@@ -751,12 +781,12 @@ document.getElementById('inputTxtFile').addEventListener('change', function(e) {
         reader._isTxtAborted = true;
         resetTxtFileState();
         currentTxtReader = null; // K1: Cleanup
+        preview.parentElement.classList.remove('loading'); // FIX: Remove loading state on error
     };
     reader.onload = function(event) {
         // M4: Check kalau reader tidak di-abort
         if (isTxtAborted || reader._isTxtAborted) return;
         txtFileContent = event.target.result;
-        let preview = document.getElementById('txtFilePreview');
         preview.innerText = txtFileContent;
         preview.style.display = 'block';
         currentTxtReader = null; // K1: Cleanup setelah load selesai
@@ -800,15 +830,16 @@ function processData(action) {
     let originalBtnText = processBtn.innerText;
     processBtn.disabled = true;
     processBtn.innerText = action === 'encrypt' ? '⏳ Enkripsi...' : '⏳ Dekripsi...';
+    processBtn.classList.add('loading'); // ✅ ADD: Tampilkan animasi loading
 
     /* M3: Setup timeout protection untuk prevent browser hang */
-    let operationStartTime = Date.now();
     operationTimeout = setTimeout(function() {
         // M3: Timeout handler
         if (isProcessing) {
             isProcessing = false;
             processBtn.disabled = false;
             processBtn.innerText = originalBtnText;
+            processBtn.classList.remove('loading');
             outputArea.innerText = `⏱️ ERROR: Operasi timeout (>60 detik). Proses dibatalkan untuk mencegah browser hang.`;
             lastOutputType = null;
             document.getElementById('btnCopy').style.display = 'none';
@@ -817,7 +848,9 @@ function processData(action) {
         }
     }, OPERATION_TIMEOUT_MS);
 
-    try {
+    // ✅ WRAP: Bungkus komputasi berat dalam setTimeout untuk browser render
+    setTimeout(function() {
+        try {
         if (type === 'text') {
             let input = document.getElementById('inputText').value;
             if (!input) return alert("Pesan tidak boleh kosong!");
@@ -825,11 +858,27 @@ function processData(action) {
             if (action === 'encrypt') {
                 let dataBytes = strToBytes(input);
                 let encrypted = encryptCBC(dataBytes, keyBytes);
-                outputArea.innerText = bytesToBase64(encrypted);
+                let base64Output = bytesToBase64(encrypted);
+                let hash = generateCustomHash(base64Output);
+                outputArea.innerText = base64Output + "." + hash; // Append hash dengan pemisah titik
                 lastOutputType = 'text';
             } else {
-                // MODE DEKRIPSI
-                let encBytes = base64ToBytes(input);
+                // MODE DEKRIPSI dengan validasi hash integrity
+                // Pisahkan ciphertext dan hash
+                let separatorIndex = input.lastIndexOf('.');
+                if (separatorIndex === -1) {
+                    throw new Error("Integritas data rusak! Ciphertext telah dimodifikasi oleh pihak luar.");
+                }
+                let base64Part = input.substring(0, separatorIndex);
+                let hashPart = input.substring(separatorIndex + 1);
+                
+                // Validasi hash
+                let calculatedHash = generateCustomHash(base64Part);
+                if (calculatedHash !== hashPart) {
+                    throw new Error("Integritas data rusak! Ciphertext telah dimodifikasi oleh pihak luar.");
+                }
+                
+                let encBytes = base64ToBytes(base64Part);
                 let decrypted = decryptCBC(encBytes, keyBytes);
                 
                 // C3: Validate output size
@@ -858,12 +907,30 @@ function processData(action) {
                 if (!imageBase64Data) return alert("Pilih gambar terlebih dahulu!");
                 let dataBytes = strToBytes(imageBase64Data);
                 let encrypted = encryptCBC(dataBytes, keyBytes);
-                outputArea.innerText = bytesToBase64(encrypted);
+                let base64Output = bytesToBase64(encrypted);
+                let hash = generateCustomHash(base64Output);
+                outputArea.innerText = base64Output + "." + hash; // Append hash dengan pemisah titik
                 lastOutputType = 'text';
             } else {
                 let input = document.getElementById('inputText').value; 
                 if (!input) return alert("Pindahkan Ciphertext hasil enkripsi gambar ke kotak Teks untuk didekripsi!");
-                let encBytes = base64ToBytes(input);
+                
+                // MODE DEKRIPSI dengan validasi hash integrity
+                // Pisahkan ciphertext dan hash
+                let separatorIndex = input.lastIndexOf('.');
+                if (separatorIndex === -1) {
+                    throw new Error("Integritas data rusak! Ciphertext telah dimodifikasi oleh pihak luar.");
+                }
+                let base64Part = input.substring(0, separatorIndex);
+                let hashPart = input.substring(separatorIndex + 1);
+                
+                // Validasi hash
+                let calculatedHash = generateCustomHash(base64Part);
+                if (calculatedHash !== hashPart) {
+                    throw new Error("Integritas data rusak! Ciphertext telah dimodifikasi oleh pihak luar.");
+                }
+                
+                let encBytes = base64ToBytes(base64Part);
                 let decrypted = decryptCBC(encBytes, keyBytes);
                 
                 // C3: Validate output size
@@ -888,13 +955,30 @@ function processData(action) {
                 if (!txtFileContent) return alert("Pilih file teks terlebih dahulu!");
                 let dataBytes = strToBytes(txtFileContent);
                 let encrypted = encryptCBC(dataBytes, keyBytes);
-                outputArea.innerText = bytesToBase64(encrypted);
+                let base64Output = bytesToBase64(encrypted);
+                let hash = generateCustomHash(base64Output);
+                outputArea.innerText = base64Output + "." + hash; // Append hash dengan pemisah titik
                 lastOutputType = 'text';
             } else {
-                // MODE DEKRIPSI
+                // MODE DEKRIPSI dengan validasi hash integrity
                 let input = txtFileContent || document.getElementById('inputText').value;
                 if (!input) return alert("Unggah file Ciphertext (.txt) untuk didekripsi!");
-                let encBytes = base64ToBytes(input);
+                
+                // Pisahkan ciphertext dan hash
+                let separatorIndex = input.lastIndexOf('.');
+                if (separatorIndex === -1) {
+                    throw new Error("Integritas data rusak! Ciphertext telah dimodifikasi oleh pihak luar.");
+                }
+                let base64Part = input.substring(0, separatorIndex);
+                let hashPart = input.substring(separatorIndex + 1);
+                
+                // Validasi hash
+                let calculatedHash = generateCustomHash(base64Part);
+                if (calculatedHash !== hashPart) {
+                    throw new Error("Integritas data rusak! Ciphertext telah dimodifikasi oleh pihak luar.");
+                }
+                
+                let encBytes = base64ToBytes(base64Part);
                 let decrypted = decryptCBC(encBytes, keyBytes);
                 
                 // C3: Validate output size
@@ -925,57 +1009,35 @@ function processData(action) {
         document.getElementById('btnDownload').style.display = 'block';
         
    } catch (e) {
-            // M5: Show meaningful error messages instead of generic
-        let errorMsg = e.message || "Unknown error";
+        // Security: Generic error message to prevent Padding Oracle Attack
+        outputArea.innerText = "ERROR: Ciphertext atau kunci rahasia salah.";
         
-        if (action === 'encrypt') {
-            // M5: Provide context-aware error
-            if (errorMsg.includes('Base64')) {
-                outputArea.innerText = "ERROR: Format enkripsi invalid. " + errorMsg;
-            } else if (errorMsg.includes('size')) {
-                outputArea.innerText = "ERROR: " + errorMsg;
-            } else {
-                outputArea.innerText = "ERROR: Enkripsi gagal - " + errorMsg;
-            }
-        } else {
-            // M5: Dekripsi error dengan context
-            if (errorMsg.includes('Padding')) {
-                outputArea.innerText = "ERROR: Kunci salah atau ciphertext rusak. " + errorMsg;
-            } else if (errorMsg.includes('Base64')) {
-                outputArea.innerText = "ERROR: Format ciphertext invalid. " + errorMsg;
-            } else if (errorMsg.includes('size')) {
-                outputArea.innerText = "ERROR: " + errorMsg;
-            } else {
-                outputArea.innerText = "ERROR: Dekripsi gagal - " + errorMsg;
-            }
-        }
-        
-        // Error asli ada di console untuk debugging
+        // Debug log untuk developer saja
         console.error("System Log (Developer Only):", e.message);
+        
         lastOutputType = null;
         document.getElementById('btnCopy').style.display = 'none';
         document.getElementById('btnDownload').style.display = 'none';
-    } finally {
-        /* K2: Always restore button state & clear processing flag */
-        isProcessing = false;
-        processBtn.disabled = false;
-        processBtn.innerText = originalBtnText;
-        
-        /* M3: Cleanup timeout */
-        if (operationTimeout) {
-            clearTimeout(operationTimeout);
-            operationTimeout = null;
+        } finally {
+            /* K2: Always restore button state & clear processing flag */
+            isProcessing = false;
+            processBtn.disabled = false;
+            processBtn.innerText = originalBtnText;
+            processBtn.classList.remove('loading');
+            
+            /* M3: Cleanup timeout */
+            if (operationTimeout) {
+                clearTimeout(operationTimeout);
+                operationTimeout = null;
+            }
+            
+            // M7: Hide copy notification jika proses selesai dengan error
+            let notification = document.getElementById('copyNotification');
+            if (notification && notification.style.display === 'block') {
+                notification.style.display = 'none';
+            }
         }
-        
-        // MIN3: Remove loading state pada timeout
-        processBtn.classList.remove('loading');
-        
-        // M7: Hide copy notification jika proses selesai dengan error
-        let notification = document.getElementById('copyNotification');
-        if (notification && notification.style.display === 'block') {
-            notification.style.display = 'none';
-        }
-    }
+    }, 50); // ✅ 50ms delay untuk browser bisa paint animasi loading sebelum CPU freeze
 }
 
 function copyOutput() {

@@ -1,0 +1,405 @@
+/* Konsol warna cybersecurity: merah gelap sebagai primary theme dengan latar belakang sangat dark */
+:root {
+    --primary: #dc2626;  /* Warna merah tema keamanan */
+    --bg: #0a0a0a;      /* Latar belakang aplikasi - hampir hitam total */
+    --surface: #171717;  /* Warna surface untuk card/container */
+    --text: #f9fafb;     /* Warna teks utama - putih terang */
+    --input-bg: #262626; /* Latar belakang input field */
+    --input-border: #404040;  /* Border input fields */
+    /* Durasi animasi bisa disesuaikan untuk semua elemen yang animated */
+    --animation-duration: 2.5s;
+    --notification-duration: 2500ms;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+}
+
+.container {
+    background: var(--surface);
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 25px rgba(220, 38, 38, 0.15);
+    width: 100%;
+    max-width: 600px;
+    border: 1px solid #333;
+}
+
+h1 {
+    font-size: 24px;
+    text-align: center;
+    color: var(--primary);
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+p.subtitle {
+    text-align: center;
+    font-size: 14px;
+    color: #9ca3af;
+    margin-bottom: 20px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 5px;
+    font-size: 14px;
+    color: #d1d5db;
+}
+
+input,
+textarea,
+select {
+    width: 100%;
+    padding: 10px;
+    background-color: var(--input-bg);
+    color: var(--text);
+    border: 1px solid var(--input-border);
+    border-radius: 6px;
+    font-family: inherit;
+    box-sizing: border-box;
+    transition: 0.3s;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.25);
+}
+
+textarea {
+    height: 100px;
+    resize: vertical;
+}
+
+/* Container untuk input password dengan toggle button mata pada sisi kanan */
+.password-group {
+    position: relative;
+}
+
+/* Input field dikasih padding kanan buat space button toggle (mata) */
+.password-group input {
+    width: 100%;
+    padding: 8px 12px;
+}
+
+.password-toggle-btn {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--primary);
+    padding: 4px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.2s ease, color 0.2s ease;
+    min-width: auto;
+    height: 40px;
+    width: 40px;
+    z-index: 10;
+    line-height: 1;
+}
+
+.password-toggle-btn:hover {
+    opacity: 0.7;
+}
+
+.password-toggle-btn:active {
+    opacity: 0.5;
+}
+
+.password-toggle-btn:focus {
+    outline: none;
+}
+
+.password-toggle-btn svg {
+    width: 20px;
+    height: 20px;
+    transition: display 0.2s ease;
+}
+
+/* FITUR 2: Metadata info styling */
+.metadata-info {
+    font-size: 12px;
+    color: #9ca3af;
+    margin-top: 8px;
+    padding: 8px;
+    background: rgba(31, 41, 55, 0.5);
+    border-radius: 4px;
+    border-left: 2px solid var(--primary);
+    min-height: 20px; /* MIN2: Ensure consistent height */
+    word-break: break-word; /* MIN2: Better text wrapping */
+}
+
+.btn-group {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+button {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    color: white;
+    transition: 0.3s;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+button .btn-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+button svg {
+    flex-shrink: 0;
+}
+
+button.loading .lock-icon,
+button.loading .unlock-icon {
+    display: none !important;
+}
+
+button.loading .spinner-icon {
+    display: inline-block !important;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* C4: Disabled state styling */
+button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    box-shadow: none;
+    animation: none; /* Stop loading animation */
+}
+
+button:disabled:hover {
+    background-color: inherit;
+    box-shadow: none;
+    transform: none;
+}
+
+/* M8: Loading state untuk file input */
+#fileInputGroup.loading,
+#txtFileInputGroup.loading {
+    opacity: 0.8;
+    pointer-events: none;
+}
+
+/* C4: Loading animation untuk processing state */
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+button.loading,
+button.loading:hover {
+    animation: pulse 1.5s ease-in-out infinite;
+    cursor: wait;
+}
+
+.btn-encrypt {
+    background-color: var(--primary);
+}
+
+.btn-encrypt:hover {
+    background-color: #991b1b;
+    box-shadow: 0 0 10px rgba(220, 38, 38, 0.5);
+}
+
+.btn-encrypt:disabled,
+.btn-encrypt.loading {
+    background-color: var(--primary);
+}
+
+.btn-decrypt {
+    background-color: #1f2937;
+    border: 1px solid var(--primary);
+}
+
+.btn-decrypt:hover {
+    background-color: var(--primary);
+    box-shadow: 0 0 10px rgba(220, 38, 38, 0.5);
+}
+
+/* C2: Custom scrollbar untuk outputArea */
+#outputArea::-webkit-scrollbar {
+    width: 8px;
+}
+
+#outputArea::-webkit-scrollbar-track {
+    background: #1a1a1a;
+    border-radius: 4px;
+}
+
+#outputArea::-webkit-scrollbar-thumb {
+    background: var(--primary);
+    border-radius: 4px;
+    opacity: 0.6;
+}
+
+#outputArea::-webkit-scrollbar-thumb:hover {
+    background: #991b1b;
+    opacity: 0.8;
+}
+
+/* Firefox scrollbar */
+#outputArea {
+    scrollbar-color: var(--primary) #1a1a1a;
+    scrollbar-width: thin;
+}
+
+#outputArea {
+    margin-top: 20px;
+    padding: 15px;
+    background: #000000;
+    border: 1px dashed var(--primary);
+    border-radius: 6px;
+    word-break: break-all;
+    font-family: monospace;
+    font-size: 13px;
+    color: #fca5a5;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+#imagePreview {
+    max-width: 100%;
+    margin-top: 10px;
+    border-radius: 6px;
+    display: none;
+    border: 1px solid var(--input-border);
+}
+
+/* C2: Custom scrollbar untuk txtFilePreview */
+#txtFilePreview::-webkit-scrollbar {
+    width: 8px;
+}
+
+#txtFilePreview::-webkit-scrollbar-track {
+    background: var(--input-bg);
+    border-radius: 4px;
+}
+
+#txtFilePreview::-webkit-scrollbar-thumb {
+    background: var(--primary);
+    border-radius: 4px;
+    opacity: 0.6;
+}
+
+#txtFilePreview::-webkit-scrollbar-thumb:hover {
+    background: #991b1b;
+    opacity: 0.8;
+}
+
+#txtFilePreview {
+    scrollbar-color: var(--primary) var(--input-bg);
+    scrollbar-width: thin;
+}
+
+/* Styling tab menu */
+.tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 25px;
+    background: #111;
+    padding: 5px;
+    border-radius: 8px;
+    border: 1px solid #333;
+}
+
+/* Tab buttons with SVG icons */
+.tab-btn {
+    flex: 1;
+    background: transparent;
+    color: #9ca3af;
+    border: none;
+    padding: 10px;
+    font-size: 14px;
+    border-radius: 6px;
+    box-shadow: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.3s ease;
+}
+
+.tab-btn svg {
+    stroke: currentColor;
+    flex-shrink: 0;
+}
+
+.tab-btn:hover {
+    color: white;
+    background: #262626;
+}
+
+.tab-btn.active {
+    background: var(--primary);
+    color: white;
+    font-weight: bold;
+    box-shadow: 0 0 15px rgba(220, 38, 38, 0.4);
+}
+
+/* C4: Tab button disabled state */
+.tab-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Animasi untuk notifikasi copy */
+@keyframes fadeInOut {
+    0% {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    10% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    90% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+}

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Kriptografi</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="container">
+    <h1>Aplikasi Kriptografi</h1>
+    <p class="subtitle"></p>
+
+    <div class="tabs" role="tablist" aria-label="Mode operasi enkripsi atau dekripsi">
+        <button id="tabEncrypt" class="tab-btn active" role="tab" aria-selected="true" aria-controls="encrypt-content" onclick="switchMode('encrypt')">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; margin-right: 8px; vertical-align: middle;">
+                <path d="M12 1v6m0 12v4M4.22 4.22l4.24 4.24m8.48 0l4.24-4.24M1 12h6m11 0h6M4.22 19.78l4.24-4.24m8.48 0l4.24 4.24"></path>
+            </svg>
+            MODE ENKRIPSI
+        </button>
+        <button id="tabDecrypt" class="tab-btn" role="tab" aria-selected="false" aria-controls="decrypt-content" onclick="switchMode('decrypt')">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; margin-right: 8px; vertical-align: middle;">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+            MODE DEKRIPSI
+        </button>
+    </div>
+
+    <div class="form-group">
+        <label for="secretKey">1. Masukkan Kunci (Maks 8 karakter):</label>
+        <!-- FITUR 1: Container untuk password toggle (tombol tampilkan/sembunyikan kunci) -->
+        <div class="password-group">
+            <input type="password" id="secretKey" placeholder="Contoh: KUNCI123" maxlength="8" aria-label="Masukkan kunci enkripsi maksimal 8 karakter" aria-describedby="keyHelp" autocomplete="off">
+            <button type="button" id="togglePasswordBtn" class="password-toggle-btn" aria-label="Tampilkan atau sembunyikan kunci" role="button" aria-pressed="false" title="Tampilkan kunci">
+                <!-- Eye Open SVG -->
+                <svg class="eye-icon eye-open" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+                <!-- Eye Slash SVG (Hidden) -->
+                <svg class="eye-icon eye-closed" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                </svg>
+            </button>
+        </div>
+        <small id="keyHelp" style="color: #9ca3af; font-size: 12px; display: block; margin-top: 4px;">Gunakan kombinasi huruf, angka, atau simbol</small>
+    </div>
+
+    <div class="form-group">
+        <label for="inputType">2. Pilih Tipe Format:</label>
+        <select id="inputType" onchange="toggleInput()" aria-label="Pilih format input: Teks Normal, File Gambar, atau File Teks">
+            <option value="text">Teks Normal</option>
+            <option value="image" id="optionImage">File Gambar (.png / .jpg)</option>
+            <option value="txt">File Teks (.txt)</option>
+        </select>
+    </div>
+
+    <div class="form-group" id="fileInputGroup" style="display: none;">
+        <label for="inputFile" id="fileInputLabel">3. Unggah File Gambar:</label>
+        <input type="file" id="inputFile" accept="image/*" style="padding: 6px;" aria-label="Unggah file gambar untuk dienkripsi" aria-describedby="fileHelp">
+        <small id="fileHelp" style="color: #9ca3af; font-size: 12px; display: block; margin-top: 4px;">Maksimal 50MB. Format: PNG, JPG, JPEG, GIF, WebP</small>
+        <img id="imagePreview" alt="Preview gambar yang dipilih">
+    </div>
+
+    <div class="form-group" id="txtFileInputGroup" style="display: none;">
+        <label for="inputTxtFile" id="txtFileInputLabel">3. Unggah File Teks (.txt):</label>
+        <input type="file" id="inputTxtFile" accept=".txt,text/plain" style="padding: 6px;" aria-label="Unggah file teks untuk dienkripsi atau dekripsi" aria-describedby="txtFileHelp">
+        <small id="txtFileHelp" style="color: #9ca3af; font-size: 12px; display: block; margin-top: 4px;">Maksimal 10MB</small>
+        <div id="txtFilePreview" style="margin-top: 10px; padding: 10px; background: var(--surface); border-radius: 4px; display: none; max-height: 200px; overflow-y: auto; color: var(--text); white-space: pre-wrap; word-break: break-all; font-size: 12px;" role="region" aria-label="Preview konten file teks"></div>
+    </div>
+
+    <div class="form-group" id="textInputGroup">
+        <label for="inputText" id="textInputLabel">3. Masukkan Pesan:</label>
+        <textarea id="inputText" placeholder="Ketik atau paste teks di sini..." autocomplete="off" aria-describedby="textHelp" aria-label="Masukkan atau paste pesan untuk dienkripsi/dekripsi"></textarea>
+        <small id="textHelp" style="color: #9ca3af; font-size: 12px; display: block; margin-top: 4px;">Enkripsi: Max 5MB | Dekripsi: Max 150MB (untuk ciphertext dari file besar)</small>
+    </div>
+
+    <div class="btn-group">
+        <button id="btnEncrypt" class="btn-encrypt" onclick="processData('encrypt')">
+            <span class="btn-content">
+                <svg class="lock-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; margin-right: 8px; vertical-align: middle;">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+                <span class="btn-text">EKSEKUSI ENKRIPSI</span>
+            </span>
+            <svg class="spinner-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="display: none; margin-left: 8px; vertical-align: middle;">
+                <circle cx="12" cy="12" r="9"></circle>
+            </svg>
+        </button>
+        <button id="btnDecrypt" class="btn-decrypt" onclick="processData('decrypt')" style="display: none;">
+            <span class="btn-content">
+                <svg class="unlock-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; margin-right: 8px; vertical-align: middle;">
+                    <rect x="5" y="11" width="14" height="10" rx="2" ry="2"></rect>
+                    <path d="M7 11V8A3 3 0 0 1 13 5h1a4 4 0 0 1 4 4v4"></path>
+                </svg>
+                <span class="btn-text">EKSEKUSI DEKRIPSI</span>
+            </span>
+            <svg class="spinner-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="display: none; margin-left: 8px; vertical-align: middle;">
+                <circle cx="12" cy="12" r="9"></circle>
+            </svg>
+        </button>
+    </div>
+
+    <label style="margin-top: 20px; color: var(--primary);">Output (Hasil):</label>
+    <div id="outputArea" role="region" aria-label="Hasil enkripsi atau dekripsi" aria-live="polite" aria-atomic="true" tabindex="0">Hasil akan muncul di sini...</div>
+    <img id="outputImage" style="max-width: 100%; margin-top: 10px; border-radius: 6px; display: none; border: 1px solid var(--primary);" alt="Gambar hasil dekripsi" tabindex="0">
+    
+    <!-- Tempat menampilkan informasi gambar yang di-upload: nama file, ukuran, dimensi, format -->
+    <div id="imagePreviewInfo" style="display: none; font-size: 12px; color: #9ca3af; margin-top: 8px;" role="status" aria-live="polite"></div>
+    
+    <!-- FITUR 2: Menampilkan info hasil dekripsi seperti ukuran original data, hash integrity check, tipe file -->
+    <div id="decryptionMetadataArea" class="metadata-info" style="display: none; font-size: 12px; color: #9ca3af; margin-top: 8px;" role="status" aria-live="polite" aria-label="Metadata hasil dekripsi"></div>
+    
+    <!-- Notifikasi inline untuk copy success -->
+    <div id="copyNotification" style="display: none; margin-top: 10px; padding: 12px; background-color: #10b981; color: white; border-radius: 6px; text-align: center; font-size: 14px; font-weight: bold;" role="status" aria-live="assertive" aria-atomic="true">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; margin-right: 6px; vertical-align: middle;"><polyline points="20 6 9 17 4 12"></polyline></svg>Output berhasil dicopy ke clipboard!
+    </div>
+    
+    <div class="btn-group" style="margin-top: 15px;">
+        <button id="btnCopy" class="btn-encrypt" onclick="copyOutput()" style="display: none; flex: 1;"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; margin-right: 6px; vertical-align: middle;"><rect x="9" y="2" width="13" height="20" rx="2" ry="2"></rect><path d="M5 13H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-1"></path></svg>COPY OUTPUT</button>
+        <button id="btnDownload" class="btn-encrypt" onclick="downloadOutput()" style="display: none; flex: 1;"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; margin-right: 6px; vertical-align: middle;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>DOWNLOAD OUTPUT</button>
+    </div>
+</div>
+
+<script src="script.js"></script>
+
+</body>
+</html>
